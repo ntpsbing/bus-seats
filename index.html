@@ -157,7 +157,10 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important}
 .stat b{font-size:1.2rem;font-variant-numeric:tabular-nums}
 .stat.empty-seat{padding-left:12px}
 .rollbar{display:none;align-items:center;gap:12px;flex-wrap:wrap;background:var(--grass-soft);border:2.5px solid var(--grass);border-radius:16px;padding:10px 14px;margin-top:4px}
-.roll .rollbar{display:flex}
+.roll .rollbar{display:flex;position:sticky;top:calc(8px + env(safe-area-inset-top,0px));z-index:40;box-shadow:0 4px 0 var(--grass)}
+.roll #tray{display:none}
+.roll .layout{grid-template-columns:1fr}
+.roll .seat.filled{cursor:pointer}
 .roll .stats{display:none}
 .rollnum{font-family:var(--f-display);font-size:1.6rem;color:var(--grass);font-variant-numeric:tabular-nums}
 .rollbar p{margin:0;flex:1;min-width:180px;font-weight:600}
@@ -305,6 +308,9 @@ code{background:var(--sun-soft);border-radius:6px;padding:0 5px;font-size:.95em}
 @media (max-width:900px){
   .layout{grid-template-columns:1fr}
   body{padding-bottom:200px}
+  body.roll{padding-bottom:40px}
+  .rollbar .btn{min-height:44px;padding:0 12px}
+  .rollnum{font-size:1.3rem}
   #tray{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:none;z-index:50;border-radius:22px 22px 0 0;border-bottom:none;box-shadow:0 -4px 0 var(--ink);
     padding:10px max(14px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));gap:6px}
   .tray-tip{display:none}
@@ -321,6 +327,12 @@ code{background:var(--sun-soft);border-radius:6px;padding:0 5px;font-size:.95em}
   .toolbar .btn{padding:0 14px}
   .toolbar .lbl-long{display:none}
   .savestate{order:9;width:100%}
+  .rollbar p{display:none}
+  .rollbar{flex-wrap:nowrap;gap:8px;padding:8px 10px}
+  .rollnum{font-size:1.05rem;flex:1;white-space:nowrap}
+  .rollbar .btn{padding:0 10px;font-size:.85rem}
+  .chk{width:20px;height:20px;right:3px;bottom:auto;top:3px}
+  .chk svg{width:13px;height:13px}
   .bus-outer{padding:0 10px}
   .wheel{width:12px;height:56px}
   .wheel::after{display:none}
@@ -997,6 +1009,8 @@ function toggleCheck(pid){
   const b = bus(); if (!seatOf(b, pid)) return;
   if (b.checked[pid]) delete b.checked[pid]; else b.checked[pid] = true;
   persist(); render({ noFlip:true });
+  const seated = Object.values(b.seats), n = seated.filter(id => b.checked[id]).length;
+  if (b.checked[pid] && n === seated.length) toast(`${b.title} 全員到齊！共 ${n} 人`);
   if (navigator.vibrate) try { navigator.vibrate(12); } catch(e){}
 }
 function tapCard(pid){
@@ -1457,7 +1471,14 @@ function openPrint(){
 const actions = {
   import:openImport, auto:openAuto, print:openPrint, editBus:openBus,
   addPerson:() => openPerson(null),
-  roll(){ ui.roll = !ui.roll; ui.sel = null; render({ noFlip:true }); toast(ui.roll ? '點名模式：學生上車就點他的座位' : '已結束點名模式'); },
+  roll(){
+    ui.roll = !ui.roll; ui.sel = null; render({ noFlip:true });
+    if (ui.roll){
+      if (!Object.keys(bus().seats).length) toast('這台車還沒有人坐，請先安排座位', 'warn');
+      else toast('點名模式：學生上車就點一下他的座位');
+      $('.stage').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block:'start' });
+    } else toast('已結束點名模式');
+  },
   clearRoll(){ commit(() => { bus().checked = {}; }, { noFlip:true }); },
   undo, redo,
   addBus(){ commit(() => { const b = newBus(S.buses.length + 1); S.buses.push(b); S.cur = b.id; S.sample = false; }, { noFlip:true }); toast(`已新增 ${bus().title}`); },
@@ -1479,6 +1500,11 @@ document.addEventListener('click', e => {
   const lock = e.target.closest('[data-lock]');
   if (lock){ toggleLock(lock.dataset.lock); return; }
   if (!$('#menu').contains(e.target)) $('#menu').open = false;
+  if (ui.roll){                                      // 點名模式：點座位（或名字）就打勾／取消
+    const seat = e.target.closest('#bus [data-seat]');
+    if (seat && bus().seats[seat.dataset.seat]) toggleCheck(bus().seats[seat.dataset.seat]);
+    return;
+  }
   if (e.target.closest('.pcard')) return;            // 卡片的點擊由 pointerup 處理
   if (ui.roll || !ui.sel) return;
   const seat = e.target.closest('#bus [data-seat]');
