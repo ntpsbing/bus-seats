@@ -124,7 +124,7 @@ textarea.inp{padding:10px 12px;line-height:1.6;resize:vertical}
 .pcard:hover{box-shadow:0 4px 0 rgba(43,45,66,.18);transform:translateY(-1px)}
 .pcard.g-M{background:var(--sky-soft);border-color:#9CC8F0}
 .pcard.g-F{background:var(--pink-soft);border-color:#F2A6C8}
-.pcard.g-T{background:var(--grass-soft);border-color:#98D2A9}
+.pcard.g-T,.pcard.g-W{background:var(--grass-soft);border-color:#98D2A9}
 .pcard.g-U{background:var(--grey-soft);border-color:#D8D2C4}
 .av{width:36px;height:36px;flex:none;display:block}
 .av svg{width:100%;height:100%;display:block}
@@ -262,12 +262,24 @@ dialog.wide{max-width:960px}
 .filepick{display:flex;align-items:center;justify-content:center;gap:8px;border:2.5px dashed var(--sky);border-radius:16px;min-height:56px;padding:8px 14px;font-weight:700;color:var(--sky);cursor:pointer;background:var(--sky-soft);text-align:center}
 .filepick input{position:absolute;opacity:0;width:1px;height:1px}
 .imp-preview{display:grid;gap:10px}
+.fmt{border:2.5px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;gap:8px;background:var(--cream)}
+.fmt-scroll{overflow-x:auto}
+.fmt-table{border-collapse:collapse;width:100%;min-width:320px;background:#fff;font-size:.92rem}
+.fmt-table th,.fmt-table td{border:1.5px solid #CFC3AA;padding:6px 10px;text-align:left}
+.fmt-table th{background:#E8F3E1;font-weight:700}
+.must{color:var(--tomato);font-weight:700;font-size:.8em}
+.ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.way{display:flex;gap:10px;align-items:flex-start;border:2px dashed var(--line);border-radius:14px;padding:10px 12px}
+.way b{display:block}
+.way small{color:var(--ink2);font-size:.82rem;display:block}
+.wn{flex:none;width:30px;height:30px;border-radius:50%;background:var(--sun);border:2px solid var(--ink);display:grid;place-items:center;font-weight:700}
+code{background:var(--sun-soft);border-radius:6px;padding:0 5px;font-size:.95em}
 .imp-sum{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-weight:700}
 .imp-warn{background:var(--tomato-soft);border-radius:12px;padding:8px 12px;font-size:.88rem;color:#8A2418;font-weight:600}
 .minis{display:flex;flex-wrap:wrap;gap:6px;max-height:190px;overflow:auto;padding:2px}
 .mini{display:flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px 2px 2px;font-size:.85rem;font-weight:700;border:2px solid var(--line);background:#fff}
 .mini .av{width:26px;height:26px}
-.mini.g-M{background:var(--sky-soft)}.mini.g-F{background:var(--pink-soft)}.mini.g-T{background:var(--grass-soft)}
+.mini.g-M{background:var(--sky-soft)}.mini.g-F{background:var(--pink-soft)}.mini.g-T,.mini.g-W{background:var(--grass-soft)}
 .err{color:var(--tomato);font-weight:700;font-size:.88rem;margin:0}
 .note-box{background:var(--sky-soft);border-radius:14px;padding:10px 14px;font-size:.9rem;font-weight:600;color:#114A7A}
 #pvBox{background:#E9E4DA;border-radius:16px;padding:16px;display:grid;gap:16px;justify-items:center;max-height:62vh;overflow:auto}
@@ -356,7 +368,7 @@ dialog.wide{max-width:960px}
 .pg-grid{min-height:0;display:grid;grid-template-columns:1fr 1fr .4fr 1fr 1fr;gap:1.5mm}
 .pg-row.last{grid-template-columns:repeat(5,1fr)}
 .pg-seat{position:relative;border:.4mm solid #2B2D42;border-radius:2.2mm;background:#fff;padding:.8mm 1.6mm;display:flex;flex-direction:column;justify-content:center;min-height:0;overflow:hidden}
-.pg-seat.M{background:#DCEEFF}.pg-seat.F{background:#FFE0EE}.pg-seat.T{background:#DDF3E3}.pg-seat.U{background:#F1EEE7}
+.pg-seat.M{background:#DCEEFF}.pg-seat.F{background:#FFE0EE}.pg-seat.T,.pg-seat.W{background:#DDF3E3}.pg-seat.U{background:#F1EEE7}
 .pg-seat.empty{border:.35mm dashed #A99B80;background:rgba(255,255,255,.6)}
 .pg-sno{position:absolute;top:.5mm;left:1.3mm;font-size:7pt;color:#666;font-variant-numeric:tabular-nums}
 .pg-seat.empty .pg-sno{inset:0;display:grid;place-items:center;font-size:10pt;color:#A99B80}
@@ -503,9 +515,27 @@ dialog.wide{max-width:960px}
 <dialog class="modal" id="dlgImport" aria-labelledby="impTitle">
   <div class="m-head"><h2 id="impTitle">匯入學生名單</h2><button class="btn btn-icon btn-ghost" data-close aria-label="關閉">✕</button></div>
   <div class="m-body">
-    <p class="hint">在 Excel 或 Google 試算表選取「座號、姓名、性別、備註」幾欄，複製後貼在下面。只有姓名也可以；性別寫「男／女」就會顯示不同頭像。</p>
-    <label class="field">貼上名單
-      <textarea id="impText" class="inp" rows="7" placeholder="1	陳柏宇	男&#10;2	黃冠廷	男	會暈車&#10;16	林品妍	女"></textarea>
+    <div class="fmt">
+      <div class="fmt-head"><b>名單格式</b>（欄位順序照這樣，<span class="must">姓名</span>一定要有，其他可以空白）</div>
+      <div class="fmt-scroll">
+        <table class="fmt-table">
+          <thead><tr><th>座號</th><th>姓名 <span class="must">必填</span></th><th>性別</th><th>備註</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>陳小明</td><td>男</td><td></td></tr>
+            <tr><td>2</td><td>林小華</td><td>女</td><td>會暈車</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint">性別寫「男／女」會顯示不同頭像；隨車老師也可以一起放進名單，性別寫「男老師／女老師」。備註寫「會暈車」「坐前排」，一鍵安排時會排在前面。</p>
+    </div>
+    <div class="ways">
+      <div class="way"><span class="wn">1</span><div><b>用 Excel 範本</b><small>下載範本 → 填好 → 用下面的「選擇檔案」上傳</small>
+        <button class="btn btn-sky" type="button" data-act="templateXlsx" style="margin-top:8px">下載 Excel 範本</button></div></div>
+      <div class="way"><span class="wn">2</span><div><b>從 Excel 複製貼上</b><small>在 Excel／Google 試算表選取那幾欄 → 複製 → 貼到下面的框框</small></div></div>
+      <div class="way"><span class="wn">3</span><div><b>直接打字</b><small>在下面的框框一行打一位，用空格隔開，例如：<code>5 王小明 男</code></small></div></div>
+    </div>
+    <label class="field">貼上或打字（一行一位）
+      <textarea id="impText" class="inp" rows="7" placeholder="1 陳小明 男&#10;2 林小華 女 會暈車&#10;3 王大同 男"></textarea>
     </label>
     <label class="filepick">
       <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt">
@@ -597,6 +627,7 @@ dialog.wide{max-width:960px}
   <div class="m-foot">
     <button class="btn btn-danger left" id="pDel">刪除</button>
     <button class="btn" data-close>取消</button>
+    <button class="btn btn-sky" id="pSaveNext">儲存，再新增下一位</button>
     <button class="btn btn-primary" id="pSave">儲存</button>
   </div>
 </dialog>
@@ -710,6 +741,7 @@ const AV = {
   M:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#BFDDFB"/><circle cx="20" cy="23.5" r="10.5" fill="#FFDCC0"/><path d="M9 22C8.3 12.5 13.6 7.5 20.3 7.5 27 7.5 32 12 31.2 22c-1.6-4.6-5.4-7.2-11-7.2S10.8 17.4 9 22z" fill="#3B2A20"/><path d="M13 12.5 17 8.3l1.6 4.4 3.4-4.8 1.3 4.8" fill="#3B2A20"/><circle cx="16.2" cy="24.6" r="1.5" fill="#1d1d1d"/><circle cx="23.8" cy="24.6" r="1.5" fill="#1d1d1d"/><path d="M16.8 28.6q3.2 2.4 6.4 0" stroke="#1d1d1d" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`,
   F:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#FFC9E0"/><circle cx="8.5" cy="14" r="5" fill="#3B2A20"/><circle cx="31.5" cy="14" r="5" fill="#3B2A20"/><path d="M5.6 16.6l5-2.6v5.2zM34.4 16.6l-5-2.6v5.2z" fill="#FF4F95"/><path d="M9.5 24c0-9 4.6-15 10.5-15s10.5 6 10.5 15v7.5h-21z" fill="#3B2A20"/><circle cx="20" cy="24" r="9.8" fill="#FFDCC0"/><path d="M10.2 22.5c1.8-6 5.4-8.8 9.8-8.8s8 2.8 9.8 8.8c-4.2-.6-7.6-2.8-9.8-5.6-2.2 2.8-5.6 5-9.8 5.6z" fill="#3B2A20"/><circle cx="16.3" cy="25" r="1.5" fill="#1d1d1d"/><circle cx="23.7" cy="25" r="1.5" fill="#1d1d1d"/><circle cx="13.9" cy="28.2" r="1.7" fill="#FF8FB4" opacity=".75"/><circle cx="26.1" cy="28.2" r="1.7" fill="#FF8FB4" opacity=".75"/><path d="M17.6 29q2.4 1.9 4.8 0" stroke="#1d1d1d" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>`,
   T:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#BDE8CA"/><circle cx="20" cy="23.5" r="10.5" fill="#FFDCC0"/><path d="M9.3 21.5C9 12.8 14 8 20.3 8 27 8 31.5 12.8 30.8 21.5c-3-5-8-6.4-12.5-5.2-3.2.8-6.4 2.4-9 5.2z" fill="#55514D"/><circle cx="16" cy="24.4" r="3.6" fill="#fff" fill-opacity=".4" stroke="#1d1d1d" stroke-width="1.5"/><circle cx="24" cy="24.4" r="3.6" fill="#fff" fill-opacity=".4" stroke="#1d1d1d" stroke-width="1.5"/><path d="M19.6 24.4h.8" stroke="#1d1d1d" stroke-width="1.5"/><circle cx="16" cy="24.6" r="1.2" fill="#1d1d1d"/><circle cx="24" cy="24.6" r="1.2" fill="#1d1d1d"/><path d="M17 29.6q3 2 6 0" stroke="#1d1d1d" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M15 34.5l5 3 5-3" stroke="#2C8C47" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  W:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#BDE8CA"/><path d="M8.6 25.5C8.6 15 13.6 8.6 20 8.6S31.4 15 31.4 25.5V32H8.6z" fill="#55514D"/><circle cx="20" cy="24" r="9.8" fill="#FFDCC0"/><path d="M10.2 22.6c1.3-6.4 5.2-9.6 9.8-9.6 4.5 0 8.3 2.8 9.9 7.8-4.8.3-9.6-1.4-12.2-4.6-1.6 3.1-4.4 5.4-7.5 6.4z" fill="#55514D"/><circle cx="16" cy="24.6" r="3.5" fill="#fff" fill-opacity=".4" stroke="#1d1d1d" stroke-width="1.5"/><circle cx="24" cy="24.6" r="3.5" fill="#fff" fill-opacity=".4" stroke="#1d1d1d" stroke-width="1.5"/><path d="M19.6 24.6h.8" stroke="#1d1d1d" stroke-width="1.5"/><circle cx="16" cy="24.8" r="1.2" fill="#1d1d1d"/><circle cx="24" cy="24.8" r="1.2" fill="#1d1d1d"/><circle cx="13" cy="28.6" r="1.6" fill="#FF8FB4" opacity=".75"/><circle cx="27" cy="28.6" r="1.6" fill="#FF8FB4" opacity=".75"/><path d="M17.6 29.8q2.4 1.8 4.8 0" stroke="#1d1d1d" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="20" cy="36" r="1.8" fill="#2C8C47"/></svg>`,
   U:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#E3DED4"/><circle cx="20" cy="23.5" r="10.5" fill="#FFDCC0"/><path d="M9.5 21C9.5 13 14 8.5 20 8.5S30.5 13 30.5 21c-2.8-3.8-6.4-5.3-10.5-5.3S12.3 17.2 9.5 21z" fill="#6B5B4E"/><circle cx="16.2" cy="24.6" r="1.5" fill="#1d1d1d"/><circle cx="23.8" cy="24.6" r="1.5" fill="#1d1d1d"/><path d="M17 28.8h6" stroke="#1d1d1d" stroke-width="1.5" stroke-linecap="round"/></svg>`
 };
 const ICON = {
@@ -719,7 +751,8 @@ const ICON = {
   check:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   warn:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v8M12 18v.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`,
 };
-const G_NAME = { M:'男', F:'女', T:'老師', U:'未填' };
+const G_NAME = { M:'男', F:'女', T:'男老師', W:'女老師', U:'未填' };
+const isT = p => p.g === 'T' || p.g === 'W';   // 老師（男老師 T、女老師 W）
 
 /* ---------- 3. 資料（State） ---------- */
 const KEY = 'nanzi-bus-seats-v1';
@@ -791,9 +824,9 @@ const person = id => S.people.find(p => p.id === id);
 const peopleOf = b => S.people.filter(p => p.bus === b.id);
 const seatOf = (b, pid) => Object.keys(b.seats).find(k => b.seats[k] === pid);
 const numOf = p => parseInt(p.no, 10) || 999;
-const byNo = (a, b) => (a.g === 'T') - (b.g === 'T') || (a.cls || '').localeCompare(b.cls || '', 'zh-Hant') || numOf(a) - numOf(b) || a.name.localeCompare(b.name, 'zh-Hant');
-const unassigned = b => peopleOf(b).filter(p => !seatOf(b, p.id)).sort((x, y) => (y.g === 'T') - (x.g === 'T') || byNo(x, y));
-const noLabel = p => p.g === 'T' ? '老師' : (p.no ? `${String(p.no).padStart(2, '0')}號` : '');
+const byNo = (a, b) => isT(a) - isT(b) || (a.cls || '').localeCompare(b.cls || '', 'zh-Hant') || numOf(a) - numOf(b) || a.name.localeCompare(b.name, 'zh-Hant');
+const unassigned = b => peopleOf(b).filter(p => !seatOf(b, p.id)).sort((x, y) => isT(y) - isT(x) || byNo(x, y));
+const noLabel = p => isT(p) ? '老師' : (p.no ? `${String(p.no).padStart(2, '0')}號` : '');
 const fullLabel = p => [noLabel(p), p.name].filter(Boolean).join(' ');
 const isPri = p => /暈|前排|前面|坐前|嘔/.test(p.note || '');
 function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -845,7 +878,7 @@ function renderStats(){
   const b = bus(), ps = peopleOf(b), cap = seatOrder(b.layout).length, seated = Object.keys(b.seats).length;
   const c = g => ps.filter(p => (p.g || 'U') === g).length;
   const box = $('#stats'); box.replaceChildren();
-  [['M','男生'],['F','女生'],['T','老師']].forEach(([g, t]) => box.append(h('span', { class:'stat' }, h('span', { class:'av', svg:AV[g] }), t, h('b', { text:c(g) }))));
+  [['M','男生'],['F','女生'],['T','男老師'],['W','女老師']].forEach(([g, t]) => { if ((g === 'T' || g === 'W') && !c(g)) return; box.append(h('span', { class:'stat' }, h('span', { class:'av', svg:AV[g] }), t, h('b', { text:c(g) }))); });
   if (c('U')) box.append(h('span', { class:'stat' }, h('span', { class:'av', svg:AV.U }), '未填性別', h('b', { text:c('U') })));
   box.append(h('span', { class:'stat empty-seat' }, '空位', h('b', { text:cap - seated })));
   const nChecked = ps.filter(p => b.checked[p.id] && seatOf(b, p.id)).length;
@@ -860,7 +893,7 @@ function renderTray(){
       h('span', { svg:document.querySelector('.logo').outerHTML }),
       h('p', { text:`${b.title} 還沒有乘客` }),
       h('button', { class:'btn btn-primary', 'data-act':'import' }, '匯入學生名單'),
-      h('button', { class:'btn', 'data-act':'addPerson' }, '一個一個新增')));
+      h('button', { class:'btn', 'data-act':'addPerson' }, '手動輸入')));
   } else if (!list.length){
     box.append(h('div', { class:'tray-done', text:'全部都有座位了！' }));
   }
@@ -1059,8 +1092,8 @@ function arrange(b, { mode = 'no', teacherFront = true, priority = true, scope =
   if (scope === 'all') for (const s of Object.keys(b.seats)) if (!b.locked[s]) delete b.seats[s];
   const placed = new Set(Object.values(b.seats));
   const pool = people.filter(p => p.bus === b.id && !keep.has(p.id) && !placed.has(p.id));
-  const teachers = pool.filter(p => p.g === 'T').sort(byNo);
-  const stu = pool.filter(p => p.g !== 'T').sort(byNo);
+  const teachers = pool.filter(isT).sort(byNo);
+  const stu = pool.filter(p => !isT(p)).sort(byNo);
   const M = stu.filter(p => p.g === 'M'), F = stu.filter(p => p.g === 'F'), U = stu.filter(p => p.g !== 'M' && p.g !== 'F');
   const priFirst = arr => priority ? [...arr.filter(isPri), ...arr.filter(p => !isPri(p))] : arr;
   let seq, seqUnits = [];
@@ -1116,11 +1149,12 @@ function placeByGroups(b, parts){
 }
 
 /* ---------- 9. 匯入名單 ---------- */
-const isGender = c => /^(男|女|男生|女生|m|f|boy|girl|男性|女性)$/i.test(c);
-const normG = c => /^(男|男生|男性|m|boy)$/i.test(c) ? 'M' : /^(女|女生|女性|f|girl)$/i.test(c) ? 'F' : /老師|教師/.test(c) ? 'T' : '';
+const isGender = c => /^(男|女|男生|女生|m|f|boy|girl|男性|女性|老師|男老師|女老師|教師)$/i.test(c);
+const normG = c => /^(男|男生|男性|m|boy)$/i.test(c) ? 'M' : /^(女|女生|女性|f|girl)$/i.test(c) ? 'F' : /女(老師|教師)/.test(c) ? 'W' : /老師|教師/.test(c) ? 'T' : '';
 function splitText(t){
-  return t.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean)
-    .map(l => (l.includes('\t') ? l.split('\t') : l.includes(',') ? l.split(',') : l.split(/\s+/)).map(c => c.replace(/^"|"$/g, '').trim()));
+  // 注意：不能把整行前面的 Tab 去掉，否則「座號空白」的那一行欄位會錯位
+  return t.replace(/\r/g, '').split('\n').filter(l => l.trim())
+    .map(l => (l.includes('\t') ? l.split('\t') : l.includes(',') ? l.split(',') : l.trim().split(/\s+/)).map(c => c.replace(/^"|"$/g, '').trim()));
 }
 function parseRows(rows){
   rows = rows.filter(r => r.some(Boolean));
@@ -1143,7 +1177,7 @@ function parseRows(rows){
       name = cells.shift() || ''; note = cells.join(' ');
     }
     name = String(name).trim().slice(0, 20);
-    if (!name || /^(姓名|名字)$/.test(name)) continue;
+    if (!name || /^(姓名|名字)/.test(name) || /^[（(]?範例[）)]?/.test(name)) continue;
     out.push({ no:String(no).replace(/\D/g, '').slice(0, 3), name, g:normG(String(g).trim()), note:String(note).trim().slice(0, 30), cls:String(cls).trim().slice(0, 20) });
   }
   return out;
@@ -1155,9 +1189,9 @@ function updateImpPreview(){
   $('#impGo').disabled = !impList.length;
   $('#impGo').textContent = impList.length ? `匯入 ${impList.length} 人` : '匯入名單';
   if (!impList.length) return;
-  const m = impList.filter(p => p.g === 'M').length, f = impList.filter(p => p.g === 'F').length;
+  const m = impList.filter(p => p.g === 'M').length, f = impList.filter(p => p.g === 'F').length, t = impList.filter(isT).length, u = impList.length - m - f - t;
   box.append(h('div', { class:'imp-sum' }, `讀到 ${impList.length} 人`, h('span', { class:'chip', text:`男 ${m}` }), h('span', { class:'chip', text:`女 ${f}` }),
-    impList.length - m - f ? h('span', { class:'chip', text:`未填性別 ${impList.length - m - f}` }) : null));
+    t ? h('span', { class:'chip', text:`老師 ${t}` }) : null, u ? h('span', { class:'chip', text:`未填性別 ${u}` }) : null));
   const warn = [];
   const nos = impList.filter(p => p.no).map(p => (p.cls || '') + '#' + p.no);
   const dup = [...new Set(nos.filter((x, i) => nos.indexOf(x) !== i))].map(x => x.split('#')[1]);
@@ -1191,7 +1225,7 @@ function doImport(){
     if (S.sample){ const keepAct = { name:'', date:'', place:'' }; S = blank(); S.act = keepAct; busId = S.buses[0].id; }
     const b = S.buses.find(x => x.id === busId) || S.buses[0];
     if (mode === 'replace'){
-      const rm = new Set(S.people.filter(p => p.bus === b.id && p.g !== 'T').map(p => p.id));
+      const rm = new Set(S.people.filter(p => p.bus === b.id && !isT(p)).map(p => p.id));
       S.people = S.people.filter(p => !rm.has(p.id));
     }
     impList.forEach(r => S.people.push({ id:uid(), bus:b.id, no:r.no, name:r.name, g:r.g, note:r.note, cls:r.cls || cls }));
@@ -1228,7 +1262,7 @@ function buildPage(b, o){
       if (o.roll) cell.append(h('span', { class:'pg-chk', text:'去□ 回□' }));
       cell.append(h('div', { class:'pg-who' }, h('span', { class:'av', svg:AV[p.g || 'U'] }),
         h('div', { class:'pg-txt' },
-          h('div', { class:'pg-no' }, [multiCls && p.cls ? p.cls + ' ' : '', noLabel(p)].join(''), h('span', { class:'pg-g', text:p.g === 'M' ? '・男' : p.g === 'F' ? '・女' : '' })),
+          h('div', { class:'pg-no' }, [multiCls && p.cls ? p.cls + ' ' : '', noLabel(p)].join(''), h('span', { class:'pg-g', text:(p.g === 'M' || p.g === 'T') ? '・男' : (p.g === 'F' || p.g === 'W') ? '・女' : '' })),
           h('div', { class:'pg-name', text:p.name }))));
       if (p.note) cell.append(h('div', { class:'pg-note', text:'※' + p.note }));
     }
@@ -1251,7 +1285,8 @@ function buildPage(b, o){
     h('div', { class:'pg-legend' },
       h('span', {}, h('span', { class:'av', svg:AV.M }), `男生 ${cnt('M')} 人`),
       h('span', {}, h('span', { class:'av', svg:AV.F }), `女生 ${cnt('F')} 人`),
-      h('span', {}, h('span', { class:'av', svg:AV.T }), `老師 ${cnt('T')} 人`),
+      cnt('T') ? h('span', {}, h('span', { class:'av', svg:AV.T }), `男老師 ${cnt('T')} 人`) : null,
+      cnt('W') ? h('span', {}, h('span', { class:'av', svg:AV.W }), `女老師 ${cnt('W')} 人`) : null,
       cnt('U') ? h('span', {}, h('span', { class:'av', svg:AV.U }), `其他 ${cnt('U')} 人`) : null,
       h('span', {}, `共 ${seated} 人｜空位 ${cap - seated}`)),
     h('div', { class:'pg-sign' },
@@ -1318,7 +1353,7 @@ function exportXlsx(){
   const wb = XLSX.utils.book_new(), used = new Set();
   S.buses.forEach(b => {
     const rows = [[S.act.name || '遊覽車座位表', '', b.title, b.cls], [], ['座位', '座號', '姓名', '性別', '班級', '備註']];
-    seatOrder(b.layout).forEach((sid, i) => { const p = person(b.seats[sid]); rows.push([i + 1, p ? (p.g === 'T' ? '老師' : p.no) : '', p ? p.name : '（空位）', p ? G_NAME[p.g || 'U'] : '', p ? p.cls : '', p ? p.note : '']); });
+    seatOrder(b.layout).forEach((sid, i) => { const p = person(b.seats[sid]); rows.push([i + 1, p ? (isT(p) ? '老師' : p.no) : '', p ? p.name : '（空位）', p ? G_NAME[p.g || 'U'] : '', p ? p.cls : '', p ? p.note : '']); });
     unassigned(b).forEach(p => rows.push(['未安排', p.no, p.name, G_NAME[p.g || 'U'], p.cls, p.note]));
     const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{ wch:8 }, { wch:6 }, { wch:12 }, { wch:6 }, { wch:12 }, { wch:20 }];
     let nm = (b.title || '車').replace(/[\[\]:*?\/\\]/g, '').slice(0, 28) || '車'; while (used.has(nm)) nm += '_'; used.add(nm);
@@ -1326,6 +1361,22 @@ function exportXlsx(){
   });
   XLSX.writeFile(wb, `${fileBase()}_座位名單.xlsx`);
   toast('已匯出 Excel 座位名單');
+}
+
+function templateXlsx(){
+  if (!window.XLSX) return toast('Excel 元件沒有載入，請確認網路連線', 'warn');
+  const wb = XLSX.utils.book_new();
+  const rows = [['座號', '姓名', '性別', '備註']];
+  const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{ wch:8 }, { wch:14 }, { wch:8 }, { wch:24 }];
+  XLSX.utils.book_append_sheet(wb, ws, '學生名單');
+  const help = [['填寫說明'], [], ['1. 在「學生名單」工作表，從第 2 列開始一行填一位學生。'], ['2. 姓名一定要填；座號、性別、備註可以空白。'],
+    ['3. 性別請填「男」或「女」，座位表會顯示不同頭像。'], ['4. 備註可寫「會暈車」「坐前排」，一鍵安排時會排在前面。'],
+    ['5. 老師也可以加進名單：性別填「男老師」或「女老師」。'], ['6. 存檔後，回到座位表按「匯入名單」→「選擇 Excel／CSV 檔案」。'], [],
+    ['範例：'], ['座號', '姓名', '性別', '備註'], [1, '陳小明', '男', ''], [2, '林小華', '女', '會暈車'], ['', '王老師', '女老師', '']];
+  const ws2 = XLSX.utils.aoa_to_sheet(help); ws2['!cols'] = [{ wch:56 }, { wch:12 }, { wch:8 }, { wch:12 }];
+  XLSX.utils.book_append_sheet(wb, ws2, '填寫說明');
+  XLSX.writeFile(wb, '遊覽車座位表_學生名單範本.xlsx');
+  toast('已下載範本，填好後用「選擇檔案」上傳');
 }
 
 /* ---------- 12. 範例資料 ---------- */
@@ -1336,7 +1387,7 @@ function sampleState(){
   const boys = ['陳柏宇','黃冠廷','李承恩','吳宥辰','蔡宇翔','許家豪','謝昀澤','洪睿恩','邱品睿','賴柏翰','徐宥廷','葉承翰','呂冠宇','何彥廷','高子翔'];
   const girls = ['林品妍','張語彤','王子晴','劉芯妤','楊詠晴','鄭雨潔','郭欣妤','曾苡安','廖思妤','周芷涵','蘇宜蓁','莊詩涵','江沛恩','羅于晴'];
   const notes = { 4:'會暈車', 19:'會暈車', 22:'坐前排' };
-  st.people.push({ id:uid(), bus:b.id, no:'', name:'王老師', g:'T', note:'', cls:'三年1班' });
+  st.people.push({ id:uid(), bus:b.id, no:'', name:'王老師', g:'W', note:'', cls:'三年1班' });
   boys.forEach((n, i) => st.people.push({ id:uid(), bus:b.id, no:String(i + 1), name:n, g:'M', note:notes[i + 1] || '', cls:'三年1班' }));
   girls.forEach((n, i) => st.people.push({ id:uid(), bus:b.id, no:String(i + 16), name:n, g:'F', note:notes[i + 16] || '', cls:'三年1班' }));
   arrange(b, { mode:'pair' }, st.people);
@@ -1363,7 +1414,7 @@ function openImport(){
   busOptions($('#impBus'), S.cur);
   $('#impCls').value = S.sample ? '' : (bus().cls || '');
   $('#impText').value = ''; $('#impFile').value = '';
-  updateImpPreview(); $('#dlgImport').showModal(); $('#impText').focus();
+  updateImpPreview(); $('#dlgImport').showModal(); if (innerWidth > 900) $('#impText').focus();
 }
 function openAuto(){
   const b = bus();
@@ -1384,11 +1435,16 @@ function openPerson(pid){
   editPid = pid || null; const p = pid ? person(pid) : null;
   $('#pTitle').textContent = p ? '編輯資料' : '新增學生或老師';
   const g = p ? (p.g || 'U') : 'M';
-  $('#pG').replaceChildren(...[['M','男生'],['F','女生'],['T','老師'],['U','未填']].map(([k, t]) =>
+  $('#pG').replaceChildren(...[['M','男生'],['F','女生'],['T','男老師'],['W','女老師'],['U','未填']].map(([k, t]) =>
     h('label', {}, h('input', { type:'radio', name:'pG', value:k, checked:k === g }), h('span', { class:'av', svg:AV[k] }), t)));
   $('#pNo').value = p ? p.no : ''; $('#pName').value = p ? p.name : ''; $('#pCls').value = p ? p.cls : (bus().cls || '');
   $('#pNote').value = p ? p.note : ''; busOptions($('#pBus'), p ? p.bus : S.cur);
   $('#pDel').hidden = !p; $('#pErr').hidden = true;
+  $('#pSaveNext').hidden = !!p; addedCount = 0;
+  if (!p){ // 新增時座號預設接在這台車最後一號後面
+    const nos = peopleOf(bus()).map(x => parseInt(x.no, 10)).filter(n => n > 0);
+    $('#pNo').value = nos.length ? String(Math.max(...nos) + 1) : '1';
+  }
   $('#dlgPerson').showModal(); $('#pName').focus();
 }
 function openPrint(){
@@ -1405,7 +1461,7 @@ const actions = {
   clearRoll(){ commit(() => { bus().checked = {}; }, { noFlip:true }); },
   undo, redo,
   addBus(){ commit(() => { const b = newBus(S.buses.length + 1); S.buses.push(b); S.cur = b.id; S.sample = false; }, { noFlip:true }); toast(`已新增 ${bus().title}`); },
-  exportXlsx, saveJson,
+  exportXlsx, saveJson, templateXlsx,
   openJson(){ $('#fileJson').click(); },
   sample(){ ask('載入範例資料', '目前的資料會被範例取代（可以按「復原」找回）。要繼續嗎？', '載入範例', () => commit(() => { S = sampleState(); }, { noFlip:true })); },
   clearAll(){ ask('全部清空', '所有車輛、名單和座位都會清除（可以按「復原」找回）。建議先「下載存檔」。要清空嗎？', '全部清空', () => { commit(() => { S = blank(); }, { noFlip:true }); toast('已清空，可以開始匯入名單'); }); },
@@ -1460,7 +1516,7 @@ $('#impGo').addEventListener('click', doImport);
 $('#autoGo').addEventListener('click', () => {
   const o = { mode:document.querySelector('input[name="autoMode"]:checked').value, teacherFront:$('#autoTeacher').checked,
               priority:$('#autoPri').checked, scope:document.querySelector('input[name="autoScope"]:checked').value };
-  const g = peopleOf(bus()).filter(p => p.g !== 'T');
+  const g = peopleOf(bus()).filter(p => !isT(p));
   if ((o.mode === 'pair' || o.mode === 'alt') && g.length && g.every(p => !p.g || p.g === 'U')) toast('名單沒有性別資料，會依座號排', 'warn');
   let left = 0; $('#dlgAuto').close();
   commit(() => { left = arrange(bus(), o); }, { stagger:true });
@@ -1490,13 +1546,13 @@ $('#busDel').addEventListener('click', () => {
   });
 });
 // 學生／老師資料
-$('#pSave').addEventListener('click', () => {
+function savePerson(next){
   const name = $('#pName').value.trim();
   if (!name){ $('#pErr').hidden = false; shake($('#pName')); $('#pName').focus(); return; }
   const data = { no:$('#pNo').value.replace(/\D/g, '').slice(0, 3), name:name.slice(0, 20), g:(document.querySelector('input[name="pG"]:checked') || {}).value || 'U',
                  cls:$('#pCls').value.trim().slice(0, 20), note:$('#pNote').value.trim().slice(0, 30), bus:$('#pBus').value };
   if (data.g === 'U') data.g = '';
-  if (data.g === 'T') data.no = '';
+  if (data.g === 'T' || data.g === 'W') data.no = '';
   commit(() => {
     if (editPid){
       const p = person(editPid);
@@ -1505,8 +1561,24 @@ $('#pSave').addEventListener('click', () => {
     } else S.people.push({ id:uid(), ...data });
     S.sample = false;
   }, { popNew:true });
+  if (next && !editPid){
+    // 連續新增：清空姓名和備註，座號自動加 1，性別、班級、車輛保留
+    addedCount++;
+    $('#pName').value = ''; $('#pNote').value = ''; $('#pErr').hidden = true;
+    if (data.no) $('#pNo').value = String(+data.no + 1);
+    $('#pTitle').textContent = `新增學生或老師（已新增 ${addedCount} 位）`;
+    toast(`已新增 ${data.name}`); $('#pName').focus();
+    return;
+  }
   $('#dlgPerson').close(); toast(editPid ? '已儲存' : `已新增 ${data.name}`);
-});
+}
+let addedCount = 0;
+$('#pSave').addEventListener('click', () => savePerson(false));
+$('#pSaveNext').addEventListener('click', () => savePerson(true));
+// 在姓名、備註欄按 Enter：新增時＝儲存並新增下一位
+['#pName', '#pNote', '#pNo'].forEach(id => $(id).addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); savePerson(!editPid); }
+}));
 $('#pDel').addEventListener('click', () => {
   const p = person(editPid); if (!p) return; $('#dlgPerson').close();
   ask('刪除', `確定要刪除「${fullLabel(p)}」嗎？`, '刪除', () => { commit(() => { S.people = S.people.filter(x => x.id !== p.id); }); toast('已刪除'); });
