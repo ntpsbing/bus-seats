@@ -634,7 +634,14 @@ code{background:var(--sun-soft);border-radius:6px;padding:0 5px;font-size:.95em}
       <label class="field">班級<input id="pCls" class="inp" maxlength="20"></label>
       <label class="field">搭乘車輛<select id="pBus" class="inp"></select></label>
     </div>
-    <label class="field">備註（會印在座位上，例如：會暈車、要坐前排）<input id="pNote" class="inp" maxlength="30"></label>
+    <div class="fields">
+      <label class="field">備註（會印在座位上）
+        <select id="pNoteSel" class="inp"></select>
+      </label>
+      <label class="field" id="pNoteOtherWrap" hidden>其他：請填寫
+        <input id="pNote" class="inp" maxlength="30" placeholder="例如：手受傷、需要靠窗" autocomplete="off">
+      </label>
+    </div>
   </div>
   <div class="m-foot">
     <button class="btn btn-danger left" id="pDel">刪除</button>
@@ -750,11 +757,11 @@ function fillOrder(key){ // 一鍵安排用的順序：「盡量不坐」的座�
 
 /* ---------- 2. 頭像圖示（程式內建，不含使用者資料） ---------- */
 const AV = {   // 頭像：男生 M、女生 F、男老師 T、女老師 W、未填 U（程式內建圖示）
-  M:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#CFE2F7"/><path d="M8.7 36.5C10 30.2 14.4 27.6 20 27.6S30 30.2 31.3 36.5A20 20 0 0 1 8.7 36.5Z" fill="#2F6DB0"/><path d="M17.4 27.8 20 30.6 22.6 27.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><rect x="17.6" y="22.5" width="4.8" height="6" rx="1.5" fill="#F3CFB3"/><circle cx="20" cy="17.2" r="7.4" fill="#F3CFB3"/><path d="M12.5 17.4C12 10.8 15.8 8.2 20.2 8.2c4.8 0 8 2.9 7.4 9.2-.9-3.2-3.2-4.9-7.5-4.9-3.9 0-6.5 1.6-7.6 4.9z" fill="#3A2E28"/><circle cx="17.3" cy="17.8" r=".95" fill="#2B2B2B"/><circle cx="22.7" cy="17.8" r=".95" fill="#2B2B2B"/><path d="M18.3 20.9q1.7 1.2 3.4 0" stroke="#2B2B2B" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>`,
-  F:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#F9D8E5"/><path d="M11.9 18.2C11.6 10.6 15.5 7.9 20 7.9s8.4 2.7 8.1 10.3l.5 8.3c-2.1 1-4.6 1.2-6.1.6h-5c-1.5.6-4 .4-6.1-.6z" fill="#3A2E28"/><path d="M8.7 36.5C10 30.2 14.4 27.6 20 27.6S30 30.2 31.3 36.5A20 20 0 0 1 8.7 36.5Z" fill="#C04C7E"/><path d="M17.4 27.8 20 30.6 22.6 27.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><rect x="17.6" y="22.5" width="4.8" height="6" rx="1.5" fill="#F3CFB3"/><circle cx="20" cy="17.2" r="7.4" fill="#F3CFB3"/><path d="M12.6 16.6C13 11.3 16.1 9.5 20 9.5s7 1.8 7.4 7.1c-3-.4-5.8-2.1-7-4.2-1.5 2.4-4.4 3.9-7.8 4.2z" fill="#3A2E28"/><circle cx="17.3" cy="17.8" r=".95" fill="#2B2B2B"/><circle cx="22.7" cy="17.8" r=".95" fill="#2B2B2B"/><path d="M18.3 20.9q1.7 1.2 3.4 0" stroke="#2B2B2B" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>`,
-  T:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#CFEBD7"/><path d="M8.7 36.5C10 30.2 14.4 27.6 20 27.6S30 30.2 31.3 36.5A20 20 0 0 1 8.7 36.5Z" fill="#2C7D45"/><rect x="22.6" y="31" width="4" height="2.8" rx=".6" fill="#fff"/><path d="M17.4 27.8 20 30.6 22.6 27.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><rect x="17.6" y="22.5" width="4.8" height="6" rx="1.5" fill="#F3CFB3"/><circle cx="20" cy="17.2" r="7.4" fill="#F3CFB3"/><path d="M12.5 17.4C12 10.6 15.8 8 20.2 8c4.8 0 8 2.9 7.4 9.4-1.6-2.6-4.6-4.2-9-4.4l-1 1.6c-1.8.4-3.6 1.3-5.1 2.8z" fill="#4A4643"/><circle cx="17.3" cy="17.8" r=".95" fill="#2B2B2B"/><circle cx="22.7" cy="17.8" r=".95" fill="#2B2B2B"/><path d="M18.3 20.9q1.7 1.2 3.4 0" stroke="#2B2B2B" stroke-width="1.1" fill="none" stroke-linecap="round"/><circle cx="17.3" cy="17.8" r="1.95" fill="none" stroke="#2B2B2B" stroke-width=".9"/><circle cx="22.7" cy="17.8" r="1.95" fill="none" stroke="#2B2B2B" stroke-width=".9"/><path d="M19.25 17.8h1.5" stroke="#2B2B2B" stroke-width="1"/></svg>`,
-  W:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#CFEBD7"/><path d="M11.9 18.2C11.6 10.6 15.5 7.9 20 7.9s8.4 2.7 8.1 10.3l.5 8.3c-2.1 1-4.6 1.2-6.1.6h-5c-1.5.6-4 .4-6.1-.6z" fill="#4A4643"/><path d="M8.7 36.5C10 30.2 14.4 27.6 20 27.6S30 30.2 31.3 36.5A20 20 0 0 1 8.7 36.5Z" fill="#2C7D45"/><rect x="22.6" y="31" width="4" height="2.8" rx=".6" fill="#fff"/><path d="M17.4 27.8 20 30.6 22.6 27.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><rect x="17.6" y="22.5" width="4.8" height="6" rx="1.5" fill="#F3CFB3"/><circle cx="20" cy="17.2" r="7.4" fill="#F3CFB3"/><path d="M12.6 16.6C13 11.3 16.1 9.5 20 9.5s7 1.8 7.4 7.1c-3-.4-5.8-2.1-7-4.2-1.5 2.4-4.4 3.9-7.8 4.2z" fill="#4A4643"/><circle cx="17.3" cy="17.8" r=".95" fill="#2B2B2B"/><circle cx="22.7" cy="17.8" r=".95" fill="#2B2B2B"/><path d="M18.3 20.9q1.7 1.2 3.4 0" stroke="#2B2B2B" stroke-width="1.1" fill="none" stroke-linecap="round"/><circle cx="17.3" cy="17.8" r="1.95" fill="none" stroke="#2B2B2B" stroke-width=".9"/><circle cx="22.7" cy="17.8" r="1.95" fill="none" stroke="#2B2B2B" stroke-width=".9"/><path d="M19.25 17.8h1.5" stroke="#2B2B2B" stroke-width="1"/></svg>`,
-  U:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#E6E2DA"/><path d="M8.7 36.5C10 30.2 14.4 27.6 20 27.6S30 30.2 31.3 36.5A20 20 0 0 1 8.7 36.5Z" fill="#8A857C"/><path d="M17.4 27.8 20 30.6 22.6 27.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><rect x="17.6" y="22.5" width="4.8" height="6" rx="1.5" fill="#F3CFB3"/><circle cx="20" cy="17.2" r="7.4" fill="#F3CFB3"/><path d="M12.5 17.4C12 10.8 15.8 8.2 20.2 8.2c4.8 0 8 2.9 7.4 9.2-.9-3.2-3.2-4.9-7.5-4.9-3.9 0-6.5 1.6-7.6 4.9z" fill="#6B625B"/><circle cx="17.3" cy="17.8" r=".95" fill="#2B2B2B"/><circle cx="22.7" cy="17.8" r=".95" fill="#2B2B2B"/><path d="M18.3 20.9q1.7 1.2 3.4 0" stroke="#2B2B2B" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>`
+  M:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#CDE3FA"/><path d="M10.2 38.4C10.8 32.6 14.6 30 20 30s9.2 2.6 9.8 8.4A20 20 0 0 1 10.2 38.4Z" fill="#3B7CC4"/><path d="M17.2 30.4 20 33.2l2.8-2.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><ellipse cx="20" cy="19.6" rx="10.2" ry="9.6" fill="#FFDCC4"/><circle cx="9.9" cy="20.6" r="1.8" fill="#FFDCC4"/><circle cx="30.1" cy="20.6" r="1.8" fill="#FFDCC4"/><path d="M9.6 20.2C9 12.6 13.8 8.6 20.2 8.6c6.6 0 10.9 4.2 10.2 11.6-1.2-3.4-3.1-5.4-5.6-6.3-1.2 1.6-3.4 2.4-6 2.2 1-.6 1.6-1.4 1.8-2.4-2.4.5-4.6 1.3-6.4 2.6-1.8 1.2-3.2 2.4-4.6 3.9z" fill="#3D2C25"/><path d="M19.8 8.8c.4-1.7 1.6-2.7 3.3-2.8-.8.8-1.1 1.7-1 2.9z" fill="#3D2C25"/><ellipse cx="16" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><ellipse cx="24" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><circle cx="16.45" cy="20.4" r=".45" fill="#fff"/><circle cx="24.45" cy="20.4" r=".45" fill="#fff"/><ellipse cx="13.4" cy="24" rx="1.7" ry="1" fill="#FF9AA8" opacity=".55"/><ellipse cx="26.6" cy="24" rx="1.7" ry="1" fill="#FF9AA8" opacity=".55"/><path d="M18.3 24.6q1.7 1.5 3.4 0" stroke="#2B2422" stroke-width="1.15" fill="none" stroke-linecap="round"/></svg>`,
+  F:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#FCDCEA"/><path d="M8.6 21C8 12.4 13.2 8.2 20 8.2S32 12.4 31.4 21l.4 6.6c-1.6 1.3-3.6 1.6-5.4 1.2L20 28.4l-6.4.4c-1.8.4-3.8.1-5.4-1.2z" fill="#3D2C25"/><path d="M10.2 38.4C10.8 32.6 14.6 30 20 30s9.2 2.6 9.8 8.4A20 20 0 0 1 10.2 38.4Z" fill="#D1578B"/><path d="M17.2 30.4 20 33.2l2.8-2.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><ellipse cx="20" cy="19.6" rx="10.2" ry="9.6" fill="#FFDCC4"/><path d="M10.2 19.6C10.6 12.8 14.8 10 20.2 10c5.2 0 9.2 2.8 9.6 9.4-2.6-.6-4.6-2.2-5.8-4.4-2.6 2.8-7.6 4.4-13.8 4.6z" fill="#3D2C25"/><rect x="24.6" y="12.6" width="4.2" height="1.6" rx=".8" transform="rotate(28 26.7 13.4)" fill="#FFC93C"/><ellipse cx="16" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><ellipse cx="24" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><circle cx="16.45" cy="20.4" r=".45" fill="#fff"/><circle cx="24.45" cy="20.4" r=".45" fill="#fff"/><ellipse cx="13.4" cy="24" rx="1.7" ry="1" fill="#FF9AA8" opacity=".55"/><ellipse cx="26.6" cy="24" rx="1.7" ry="1" fill="#FF9AA8" opacity=".55"/><path d="M18.3 24.6q1.7 1.5 3.4 0" stroke="#2B2422" stroke-width="1.15" fill="none" stroke-linecap="round"/></svg>`,
+  T:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#D2EEDA"/><path d="M10.2 38.4C10.8 32.6 14.6 30 20 30s9.2 2.6 9.8 8.4A20 20 0 0 1 10.2 38.4Z" fill="#2F8A4C"/><rect x="23.4" y="33" width="3.6" height="2.6" rx=".6" fill="#fff"/><path d="M17.2 30.4 20 33.2l2.8-2.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><ellipse cx="20" cy="19.6" rx="10.2" ry="9.6" fill="#FFDCC4"/><circle cx="9.9" cy="20.6" r="1.8" fill="#FFDCC4"/><circle cx="30.1" cy="20.6" r="1.8" fill="#FFDCC4"/><path d="M9.7 20C9.2 12.4 13.9 8.6 20.2 8.6c6.6 0 10.8 4 10.1 11.4-1.8-2.8-5-4.8-9.6-5.2l-1.4 1.8c-3.8.2-7 1.4-9.6 3.4z" fill="#4A4340"/><ellipse cx="16" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><ellipse cx="24" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><circle cx="16.45" cy="20.4" r=".45" fill="#fff"/><circle cx="24.45" cy="20.4" r=".45" fill="#fff"/><circle cx="16" cy="21" r="2.7" fill="#fff" fill-opacity=".25" stroke="#2B2422" stroke-width=".95"/><circle cx="24" cy="21" r="2.7" fill="#fff" fill-opacity=".25" stroke="#2B2422" stroke-width=".95"/><path d="M18.7 20.8h2.6" stroke="#2B2422" stroke-width=".95"/><ellipse cx="13.4" cy="24" rx="1.7" ry="1" fill="#FF9AA8" opacity=".55"/><ellipse cx="26.6" cy="24" rx="1.7" ry="1" fill="#FF9AA8" opacity=".55"/><path d="M18.3 24.6q1.7 1.5 3.4 0" stroke="#2B2422" stroke-width="1.15" fill="none" stroke-linecap="round"/></svg>`,
+  W:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#D2EEDA"/><path d="M8.6 21C8 12.4 13.2 8.2 20 8.2S32 12.4 31.4 21l.4 6.6c-1.6 1.3-3.6 1.6-5.4 1.2L20 28.4l-6.4.4c-1.8.4-3.8.1-5.4-1.2z" fill="#4A4340"/><path d="M10.2 38.4C10.8 32.6 14.6 30 20 30s9.2 2.6 9.8 8.4A20 20 0 0 1 10.2 38.4Z" fill="#2F8A4C"/><rect x="23.4" y="33" width="3.6" height="2.6" rx=".6" fill="#fff"/><path d="M17.2 30.4 20 33.2l2.8-2.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><ellipse cx="20" cy="19.6" rx="10.2" ry="9.6" fill="#FFDCC4"/><path d="M10.2 19.6C10.6 12.8 14.8 10 20.2 10c5.2 0 9.2 2.8 9.6 9.4-2.6-.6-4.6-2.2-5.8-4.4-2.6 2.8-7.6 4.4-13.8 4.6z" fill="#4A4340"/><ellipse cx="16" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><ellipse cx="24" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><circle cx="16.45" cy="20.4" r=".45" fill="#fff"/><circle cx="24.45" cy="20.4" r=".45" fill="#fff"/><circle cx="16" cy="21" r="2.7" fill="#fff" fill-opacity=".25" stroke="#2B2422" stroke-width=".95"/><circle cx="24" cy="21" r="2.7" fill="#fff" fill-opacity=".25" stroke="#2B2422" stroke-width=".95"/><path d="M18.7 20.8h2.6" stroke="#2B2422" stroke-width=".95"/><ellipse cx="13.4" cy="24" rx="1.7" ry="1" fill="#FF9AA8" opacity=".55"/><ellipse cx="26.6" cy="24" rx="1.7" ry="1" fill="#FF9AA8" opacity=".55"/><path d="M18.3 24.6q1.7 1.5 3.4 0" stroke="#2B2422" stroke-width="1.15" fill="none" stroke-linecap="round"/></svg>`,
+  U:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#E8E4DC"/><path d="M10.2 38.4C10.8 32.6 14.6 30 20 30s9.2 2.6 9.8 8.4A20 20 0 0 1 10.2 38.4Z" fill="#8D877E"/><path d="M17.2 30.4 20 33.2l2.8-2.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/><ellipse cx="20" cy="19.6" rx="10.2" ry="9.6" fill="#FFDCC4"/><circle cx="9.9" cy="20.6" r="1.8" fill="#FFDCC4"/><circle cx="30.1" cy="20.6" r="1.8" fill="#FFDCC4"/><path d="M9.6 20.2C9 12.6 13.8 8.6 20.2 8.6c6.6 0 10.9 4.2 10.2 11.6-1.2-3.4-3.1-5.4-5.6-6.3-1.2 1.6-3.4 2.4-6 2.2 1-.6 1.6-1.4 1.8-2.4-2.4.5-4.6 1.3-6.4 2.6-1.8 1.2-3.2 2.4-4.6 3.9z" fill="#6E655E"/><path d="M19.8 8.8c.4-1.7 1.6-2.7 3.3-2.8-.8.8-1.1 1.7-1 2.9z" fill="#6E655E"/><ellipse cx="16" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><ellipse cx="24" cy="21" rx="1.35" ry="1.6" fill="#2B2422"/><circle cx="16.45" cy="20.4" r=".45" fill="#fff"/><circle cx="24.45" cy="20.4" r=".45" fill="#fff"/><path d="M18.3 24.6q1.7 1.5 3.4 0" stroke="#2B2422" stroke-width="1.15" fill="none" stroke-linecap="round"/></svg>`
 };
 const ICON = {
   lock:`<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2.6" fill="none"/></svg>`,
@@ -764,6 +771,8 @@ const ICON = {
   warn:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v8M12 18v.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`,
 };
 const G_NAME = { M:'男', F:'女', T:'男老師', W:'女老師', U:'未填' };
+// 備註下拉選單的選項（要增減就改這裡）；「會暈車、坐前排、需老師陪同」一鍵安排時會排在前面
+const NOTE_OPTIONS = ['會暈車', '坐前排', '需老師陪同', '坐靠窗', '坐走道旁', '行動不便'];
 const isT = p => p.g === 'T' || p.g === 'W';   // 老師（男老師 T、女老師 W）
 
 /* ---------- 3. 資料（State） ---------- */
@@ -840,7 +849,7 @@ const byNo = (a, b) => isT(a) - isT(b) || (a.cls || '').localeCompare(b.cls || '
 const unassigned = b => peopleOf(b).filter(p => !seatOf(b, p.id)).sort((x, y) => isT(y) - isT(x) || byNo(x, y));
 const noLabel = p => isT(p) ? '老師' : (p.no ? `${String(p.no).padStart(2, '0')}號` : '');
 const fullLabel = p => [noLabel(p), p.name].filter(Boolean).join(' ');
-const isPri = p => /暈|前排|前面|坐前|嘔/.test(p.note || '');
+const isPri = p => /暈|前排|前面|坐前|嘔|陪同/.test(p.note || '');
 function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function fmtDate(iso){
   if (!iso) return '';
@@ -1384,7 +1393,7 @@ function templateXlsx(){
   const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{ wch:8 }, { wch:14 }, { wch:8 }, { wch:24 }];
   XLSX.utils.book_append_sheet(wb, ws, '學生名單');
   const help = [['填寫說明'], [], ['1. 在「學生名單」工作表，從第 2 列開始一行填一位學生。'], ['2. 姓名一定要填；座號、性別、備註可以空白。'],
-    ['3. 性別請填「男」或「女」，座位表會顯示不同頭像。'], ['4. 備註可寫「會暈車」「坐前排」，一鍵安排時會排在前面。'],
+    ['3. 性別請填「男」或「女」，座位表會顯示不同頭像。'], ['4. 備註可寫「會暈車」「坐前排」「需老師陪同」，一鍵安排時會排在前面；也可以寫其他文字。'],
     ['5. 老師也可以加進名單：性別填「男老師」或「女老師」。'], ['6. 存檔後，回到座位表按「匯入名單」→「選擇 Excel／CSV 檔案」。'], [],
     ['範例：'], ['座號', '姓名', '性別', '備註'], [1, '陳小明', '男', ''], [2, '林小華', '女', '會暈車'], ['', '王老師', '女老師', '']];
   const ws2 = XLSX.utils.aoa_to_sheet(help); ws2['!cols'] = [{ wch:56 }, { wch:12 }, { wch:8 }, { wch:12 }];
@@ -1445,6 +1454,24 @@ function openBus(){
   $('#dlgBus').showModal();
 }
 let editPid = null;
+// 備註：下拉選單＋「其他」自己填
+function setNote(v){
+  const sel = $('#pNoteSel');
+  sel.replaceChildren(h('option', { value:'', text:'（無）' }), ...NOTE_OPTIONS.map(o => h('option', { value:o, text:o })), h('option', { value:'__other', text:'其他（自己填寫）' }));
+  if (!v) sel.value = '';
+  else if (NOTE_OPTIONS.includes(v)) sel.value = v;
+  else { sel.value = '__other'; }
+  $('#pNote').value = NOTE_OPTIONS.includes(v) ? '' : (v || '');
+  $('#pNoteOtherWrap').hidden = sel.value !== '__other';
+}
+function getNote(){
+  const v = $('#pNoteSel').value;
+  return (v === '__other' ? $('#pNote').value.trim() : v).slice(0, 30);
+}
+$('#pNoteSel').addEventListener('change', () => {
+  const other = $('#pNoteSel').value === '__other';
+  $('#pNoteOtherWrap').hidden = !other; if (other) $('#pNote').focus();
+});
 function openPerson(pid){
   editPid = pid || null; const p = pid ? person(pid) : null;
   $('#pTitle').textContent = p ? '編輯資料' : '新增學生或老師';
@@ -1452,7 +1479,7 @@ function openPerson(pid){
   $('#pG').replaceChildren(...[['M','男生'],['F','女生'],['T','男老師'],['W','女老師'],['U','未填']].map(([k, t]) =>
     h('label', {}, h('input', { type:'radio', name:'pG', value:k, checked:k === g }), h('span', { class:'av', svg:AV[k] }), t)));
   $('#pNo').value = p ? p.no : ''; $('#pName').value = p ? p.name : ''; $('#pCls').value = p ? p.cls : (bus().cls || '');
-  $('#pNote').value = p ? p.note : ''; busOptions($('#pBus'), p ? p.bus : S.cur);
+  setNote(p ? p.note : ''); busOptions($('#pBus'), p ? p.bus : S.cur);
   $('#pDel').hidden = !p; $('#pErr').hidden = true;
   $('#pSaveNext').hidden = !!p; addedCount = 0;
   if (!p){ // 新增時座號預設接在這台車最後一號後面
@@ -1576,7 +1603,7 @@ function savePerson(next){
   const name = $('#pName').value.trim();
   if (!name){ $('#pErr').hidden = false; shake($('#pName')); $('#pName').focus(); return; }
   const data = { no:$('#pNo').value.replace(/\D/g, '').slice(0, 3), name:name.slice(0, 20), g:(document.querySelector('input[name="pG"]:checked') || {}).value || 'U',
-                 cls:$('#pCls').value.trim().slice(0, 20), note:$('#pNote').value.trim().slice(0, 30), bus:$('#pBus').value };
+                 cls:$('#pCls').value.trim().slice(0, 20), note:getNote(), bus:$('#pBus').value };
   if (data.g === 'U') data.g = '';
   if (data.g === 'T' || data.g === 'W') data.no = '';
   commit(() => {
@@ -1590,7 +1617,7 @@ function savePerson(next){
   if (next && !editPid){
     // 連續新增：清空姓名和備註，座號自動加 1，性別、班級、車輛保留
     addedCount++;
-    $('#pName').value = ''; $('#pNote').value = ''; $('#pErr').hidden = true;
+    $('#pName').value = ''; setNote(''); $('#pErr').hidden = true;
     if (data.no) $('#pNo').value = String(+data.no + 1);
     $('#pTitle').textContent = `新增學生或老師（已新增 ${addedCount} 位）`;
     toast(`已新增 ${data.name}`); $('#pName').focus();
