@@ -1,0 +1,1535 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>楠小遊覽車座位表</title>
+<meta name="description" content="高雄市楠梓國小 遊覽車座位安排：匯入名單、拖拉、一鍵安排、A4 列印。名單只存在自己的電腦，不會上傳。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 48%22%3E%3Crect x=%223%22 y=%225%22 width=%2257%22 height=%2231%22 rx=%229%22 fill=%22%23FFC93C%22 stroke=%22%232B2D42%22 stroke-width=%223%22/%3E%3Ccircle cx=%2217%22 cy=%2238%22 r=%226.5%22 fill=%22%232B2D42%22/%3E%3Ccircle cx=%2247%22 cy=%2238%22 r=%226.5%22 fill=%22%232B2D42%22/%3E%3C/svg%3E">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  /* Tailwind 設定：顏色與字型集中在這裡 */
+  if (window.tailwind) tailwind.config = {
+    corePlugins: { preflight: false },
+    theme: { extend: {
+      colors: { tomato:'#D9412F', sun:'#FFC93C', grass:'#2C8C47', sky:'#1C74C0', cream:'#FFF7E8', ink:'#2B2D42' },
+      fontFamily: { round:['Huninn','"Noto Sans TC"','sans-serif'], sans:['"Noto Sans TC"','sans-serif'] }
+    } }
+  };
+</script>
+<!-- 讀取／匯出 Excel 用（SheetJS，固定版本） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- 把座位表轉成圖片用（html2canvas，固定版本） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* 版面：左邊「尚未安排」名單＋右邊俯視的遊覽車（車頭朝上）；手機改成上方車子、底部名單條 */
+:root{
+  --cream:#FFF7E8; --paper:#FFFFFF; --ink:#2B2D42; --ink2:#585C76; --line:#E9DBBF; --seat-empty:#CDBFA5;
+  --tomato:#D9412F; --tomato-soft:#FFE2DC;
+  --sun:#FFC93C; --sun-deep:#E59A00; --sun-soft:#FFF1C7;
+  --grass:#2C8C47; --grass-soft:#DDF3E3;
+  --sky:#1C74C0; --sky-soft:#DCEEFF;
+  --pink:#C2306F; --pink-soft:#FFE0EE;
+  --grey-soft:#F1EEE7;
+  --f-display:"Huninn","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --r-lg:22px; --r-md:14px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font-size:18px;-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--cream);color:var(--ink);font-family:var(--f-body);line-height:1.55;
+  background-image:radial-gradient(rgba(229,154,0,.16) 1.5px,transparent 1.7px);background-size:22px 22px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:16px 48px;
+}
+.wrap{max-width:1260px;margin:0 auto}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;font-weight:400}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
+
+/* ---------- 按鈕 ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.45em;min-height:48px;padding:0 18px;border-radius:999px;
+  border:2.5px solid var(--ink);background:var(--paper);color:var(--ink);font-weight:700;font-size:1rem;line-height:1;cursor:pointer;
+  box-shadow:0 3px 0 var(--ink);transition:transform .15s ease,box-shadow .15s ease,background-color .15s ease;white-space:nowrap;text-decoration:none}
+.btn:hover{transform:translateY(-2px);box-shadow:0 5px 0 var(--ink)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.btn svg{width:22px;height:22px;flex:none}
+.btn-primary{background:var(--tomato);color:#fff}
+.btn-sun{background:var(--sun)}
+.btn-sky{background:var(--sky-soft)}
+.btn-grass{background:var(--grass-soft)}
+.btn-ghost{box-shadow:none;border-color:transparent;background:transparent}
+.btn-ghost:hover{background:var(--grey-soft);box-shadow:none;transform:none}
+.btn-danger{background:var(--paper);color:var(--tomato);border-color:var(--tomato);box-shadow:0 3px 0 var(--tomato)}
+.btn-icon{width:48px;padding:0}
+.btn[disabled]{opacity:.35;pointer-events:none}
+.btn.on{background:var(--grass);color:#fff}
+
+/* ---------- 頁首 ---------- */
+.top{background:var(--paper);border:2.5px solid var(--ink);border-radius:var(--r-lg);box-shadow:0 5px 0 var(--ink);padding:16px 20px;display:grid;gap:14px}
+.brand{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{width:64px;height:48px;flex:none}
+.logo .lb{animation:bob .55s ease-in-out infinite alternate;transform-origin:center}
+.logo .wl{animation:spin 1.2s linear infinite;transform-box:fill-box;transform-origin:center}
+.eyebrow{font-size:.8rem;font-weight:700;color:var(--ink2);letter-spacing:.08em}
+.brand h1{font-size:1.7rem;line-height:1.2}
+.act{flex:1;min-width:240px;display:grid;gap:10px}
+.act-name{width:100%;border:none;border-bottom:3px dashed var(--line);background:transparent;font-family:var(--f-display);font-size:1.45rem;padding:4px 2px;min-height:48px}
+.act-name:focus{outline:none;border-bottom-color:var(--sky)}
+.fields{display:flex;flex-wrap:wrap;gap:10px 14px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:700;color:var(--ink2);flex:1;min-width:150px}
+.inp{min-height:48px;border:2px solid var(--line);border-radius:12px;padding:0 12px;background:#fff;color:var(--ink);font-size:1rem;font-weight:500;width:100%}
+textarea.inp{padding:10px 12px;line-height:1.6;resize:vertical}
+.inp:focus{outline:none;border-color:var(--sky);box-shadow:0 0 0 3px var(--sky-soft)}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.toolbar .sp{flex:1}
+.savestate{font-size:.8rem;font-weight:700;color:var(--grass);white-space:nowrap}
+.savestate.bad{color:var(--tomato);white-space:normal}
+.menu{position:relative}
+.menu summary{list-style:none}
+.menu summary::-webkit-details-marker{display:none}
+.menu-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:80;background:var(--paper);border:2.5px solid var(--ink);border-radius:16px;box-shadow:0 5px 0 var(--ink);padding:8px;display:grid;gap:2px;min-width:250px;animation:pop .2s ease}
+.menu-pop button{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:none;background:none;border-radius:10px;text-align:left;cursor:pointer;font-weight:600}
+.menu-pop button:hover{background:var(--sun-soft)}
+.menu-pop hr{border:none;border-top:2px dashed var(--line);margin:4px 6px}
+
+.samplebar{margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--sun-soft);border:2px dashed var(--sun-deep);border-radius:16px;padding:10px 14px;font-weight:600}
+.samplebar span{flex:1;min-width:200px}
+
+/* ---------- 主版面 ---------- */
+.layout{display:grid;grid-template-columns:310px minmax(0,1fr);gap:22px;margin-top:20px;align-items:start}
+#tray{position:sticky;top:12px;background:var(--paper);border:2.5px solid var(--ink);border-radius:var(--r-lg);box-shadow:0 5px 0 var(--ink);
+  padding:14px;max-height:calc(100vh - 24px);display:flex;flex-direction:column;gap:10px;transition:background-color .15s}
+#tray.drop-hover{background:var(--sun-soft)}
+.tray-head{display:flex;align-items:center;gap:8px}
+.tray-head h2{font-size:1.2rem;flex:1}
+.badge{display:inline-grid;place-items:center;min-width:30px;height:30px;padding:0 8px;border-radius:999px;background:var(--tomato);color:#fff;font-weight:700;font-size:.9rem;font-variant-numeric:tabular-nums}
+.badge.zero{background:var(--grass)}
+.tray-tip{font-size:.8rem;color:var(--ink2);margin:0}
+#trayList{overflow:auto;display:grid;gap:8px;padding:4px 4px 8px;min-height:120px;flex:1;align-content:start}
+.tray-done{text-align:center;padding:20px 8px;color:var(--grass);font-weight:700}
+.empty{text-align:center;display:grid;gap:12px;justify-items:center;padding:14px 4px}
+.empty p{margin:0;font-weight:700;color:var(--ink2)}
+
+/* ---------- 乘客卡片 ---------- */
+.pcard{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;background:#fff;border:2px solid var(--line);cursor:grab;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y;position:relative;min-height:54px;transition:transform .15s ease,box-shadow .15s ease}
+.pcard:hover{box-shadow:0 4px 0 rgba(43,45,66,.18);transform:translateY(-1px)}
+.pcard.g-M{background:var(--sky-soft);border-color:#9CC8F0}
+.pcard.g-F{background:var(--pink-soft);border-color:#F2A6C8}
+.pcard.g-T{background:var(--grass-soft);border-color:#98D2A9}
+.pcard.g-U{background:var(--grey-soft);border-color:#D8D2C4}
+.av{width:36px;height:36px;flex:none;display:block}
+.av svg{width:100%;height:100%;display:block}
+.ptxt{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.pno{font-weight:700;font-size:.78rem;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pname{font-weight:700;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pnote{font-size:.7rem;background:var(--sun);border-radius:999px;padding:1px 8px;font-weight:700;margin-left:auto;white-space:nowrap;max-width:9em;overflow:hidden;text-overflow:ellipsis}
+.pcard.is-sel{outline:3px solid var(--tomato);outline-offset:2px;animation:selPulse 1.1s ease-in-out infinite}
+.pcard.pressing{transform:scale(1.06);box-shadow:0 8px 16px rgba(0,0,0,.18)}
+.pcard.dragging-src{opacity:.25}
+.ghost{position:fixed!important;left:0;top:0;z-index:1000;pointer-events:none;margin:0;box-shadow:0 18px 32px rgba(0,0,0,.28)!important;transition:none!important;cursor:grabbing}
+body.is-dragging,body.is-dragging *{cursor:grabbing!important}
+
+/* ---------- 車輛分頁與資訊 ---------- */
+.stage{min-width:0}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.tab{min-height:50px;padding:0 16px;border-radius:16px;border:2.5px solid var(--ink);background:var(--paper);font-family:var(--f-display);font-size:1.05rem;cursor:pointer;
+  display:inline-flex;gap:8px;align-items:center;transition:transform .15s,box-shadow .15s,background-color .15s}
+.tab:hover{transform:translateY(-2px)}
+.tab.on{background:var(--sun);box-shadow:0 4px 0 var(--ink);transform:translateY(-3px)}
+.tab .cnt{font:700 .78rem var(--f-body);background:#fff;border-radius:999px;padding:2px 8px;border:1.5px solid var(--ink);font-variant-numeric:tabular-nums}
+.tab .cnt.over{background:var(--tomato);color:#fff}
+.tab-add{border-style:dashed;background:transparent}
+.businfo{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 10px;align-items:center}
+.chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:5px 12px;font-size:.85rem;font-weight:600}
+.chip b{color:var(--ink2);margin-right:4px}
+.stats{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stat{display:flex;align-items:center;gap:6px;background:#fff;border-radius:14px;padding:5px 12px 5px 6px;border:2px solid var(--line);font-weight:700;font-size:.9rem}
+.stat .av{width:30px;height:30px}
+.stat b{font-size:1.2rem;font-variant-numeric:tabular-nums}
+.stat.empty-seat{padding-left:12px}
+.rollbar{display:none;align-items:center;gap:12px;flex-wrap:wrap;background:var(--grass-soft);border:2.5px solid var(--grass);border-radius:16px;padding:10px 14px;margin-top:4px}
+.roll .rollbar{display:flex}
+.roll .stats{display:none}
+.rollnum{font-family:var(--f-display);font-size:1.6rem;color:var(--grass);font-variant-numeric:tabular-nums}
+.rollbar p{margin:0;flex:1;min-width:180px;font-weight:600}
+
+/* ---------- 遊覽車（車頭朝上） ---------- */
+.bus-outer{position:relative;max-width:660px;margin:18px auto 0;padding:0 18px}
+.wheel{position:absolute;width:20px;height:70px;background:var(--ink);border-radius:10px}
+.wheel::after{content:"";position:absolute;left:5px;right:5px;top:12px;bottom:12px;border-radius:5px;background:repeating-linear-gradient(0deg,#555a78 0 5px,var(--ink) 5px 10px)}
+.w1{left:0;top:150px}.w2{right:0;top:150px}.w3{left:0;bottom:120px}.w4{right:0;bottom:120px}
+.bus-body{position:relative;background:var(--sun);border:3px solid var(--ink);border-radius:74px 74px 28px 28px;padding:14px 14px 16px;box-shadow:0 6px 0 var(--ink)}
+.bus-nose{display:flex;align-items:center;gap:10px}
+.lamp{width:22px;height:14px;border-radius:50%;background:#FFFBEA;border:2.5px solid var(--ink);flex:none;box-shadow:0 0 0 4px rgba(255,255,255,.35)}
+.windshield{flex:1;background:linear-gradient(180deg,#BFE3FF,#E7F4FF);border:3px solid var(--ink);border-radius:56px 56px 12px 12px;min-height:50px;
+  display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-size:1rem;gap:6px;color:var(--ink)}
+.cabin{background:var(--cream);border:3px solid var(--ink);border-radius:18px;margin-top:12px;padding:12px;display:flex;flex-direction:column;gap:9px}
+.frontrow,.row{display:grid;grid-template-columns:1fr 1fr .42fr 1fr 1fr;gap:8px}
+.gridrows{display:grid;grid-template-columns:1fr 1fr .42fr 1fr 1fr;gap:9px 8px}
+.row-last{grid-template-columns:repeat(5,1fr)}
+.driver{grid-column:1/span 2;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:2px dashed var(--ink2);border-radius:12px;min-height:50px;font-weight:700;color:var(--ink2)}
+.driver svg{width:28px;height:28px;animation:steer 3s ease-in-out infinite}
+.door{grid-column:4/span 2;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--sky-soft);border:2px solid var(--sky);border-radius:12px;min-height:50px;font-weight:700;color:var(--sky)}
+.aisle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.66rem;font-weight:700;color:#A8977A;font-variant-numeric:tabular-nums;line-height:1.1;text-align:center}
+.stepzone{grid-column:span 2;border:2px dashed var(--sky);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--sky);font-weight:700;font-size:.85rem;
+  background:repeating-linear-gradient(0deg,var(--sky-soft) 0 9px,#fff 9px 13px);text-align:center;padding:4px}
+.seat.reserve:not(.filled){background:repeating-linear-gradient(45deg,rgba(255,255,255,.7) 0 8px,#F3EAD8 8px 16px)}
+.rsv{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:.68rem;font-weight:700;color:#9C8A6B;pointer-events:none}
+.seat.reserve:not(.filled) .sno{place-items:start center;padding-top:10px}
+.exit{grid-column:span 2;border:2px solid var(--sky);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--sky);font-weight:700;font-size:.9rem;background:var(--sky-soft);text-align:center;padding:4px}
+.seat{position:relative;min-height:80px;border-radius:14px;background:rgba(255,255,255,.55);border:2px dashed var(--seat-empty);display:flex;align-items:stretch;
+  transition:background-color .15s,border-color .15s,transform .15s}
+.seat::before{content:"";position:absolute;top:-6px;left:24%;right:24%;height:7px;border-radius:6px 6px 0 0;background:#E3D2B1;border:2px solid var(--seat-empty);border-bottom:none}
+.sno{position:absolute;bottom:3px;right:8px;font-weight:700;font-size:.72rem;color:#AE9E82;font-variant-numeric:tabular-nums;pointer-events:none;z-index:1}
+.seat:not(.filled) .sno{inset:0;display:grid;place-items:center;font-size:1.05rem}
+.seat.filled{border-color:transparent;background:transparent}
+.seat.filled::before{background:#fff;border-color:var(--ink2)}
+.seat .pcard{flex:1;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:6px;row-gap:2px;align-items:center;align-content:center;padding:7px 9px;min-height:0;border-width:2.5px}
+.seat .av{width:30px;height:30px;grid-row:1;grid-column:1}
+.seat .ptxt{display:contents}
+.seat .pno{grid-row:1;grid-column:2}
+.seat .pname{grid-row:2;grid-column:1/-1;font-size:1.05rem}
+.seat .pnote{grid-column:1/-1;margin:0;justify-self:start;font-size:.62rem;padding:0 6px}
+.seat.can-drop{border-color:var(--sky);background:#fff}
+.seat.drop-hover{background:var(--sun-soft);border-color:var(--tomato);border-style:solid;transform:scale(1.05)}
+.seat.drop-hover .pcard{box-shadow:0 0 0 3px var(--tomato)}
+.seat.drop-no{background:#eee;border-color:#999}
+.seat.locked .pcard{box-shadow:inset 0 0 0 2px var(--sun-deep)}
+.lockbtn{position:absolute;top:-10px;right:-8px;width:30px;height:30px;border-radius:50%;border:2px solid var(--ink);background:#fff;display:grid;place-items:center;
+  opacity:0;transition:opacity .15s,transform .15s;cursor:pointer;z-index:3;padding:0;color:var(--ink)}
+.lockbtn svg{width:16px;height:16px}
+.lockbtn:hover{transform:scale(1.12)}
+.seat:hover .lockbtn,.seat:focus-within .lockbtn,.seat.locked .lockbtn{opacity:1}
+.seat.locked .lockbtn{background:var(--sun)}
+@media (hover:none){.seat:not(.locked) .lockbtn{display:none}}
+.chk{position:absolute;right:6px;bottom:6px;width:28px;height:28px;border-radius:50%;background:var(--grass);color:#fff;display:grid;place-items:center;z-index:2;animation:popIn .3s cubic-bezier(.3,1.6,.5,1)}
+.chk svg{width:18px;height:18px}
+.roll .seat.filled .pcard{cursor:pointer}
+.roll .seat.filled:not(.checked) .pcard{opacity:.55;filter:grayscale(.7)}
+.roll .seat.checked .pcard{box-shadow:inset 0 0 0 3px var(--grass)}
+.roll .lockbtn{display:none}
+.rear{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-family:var(--f-display);font-size:1rem}
+.taillight{width:26px;height:12px;border-radius:6px;background:var(--tomato);border:2.5px solid var(--ink)}
+
+/* ---------- 選取提示列、通知 ---------- */
+.selbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:#fff;border-radius:18px;
+  padding:10px 12px 10px 16px;display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;width:max-content;max-width:calc(100vw - 32px);box-shadow:0 10px 30px rgba(0,0,0,.25);animation:slideUp .25s ease}
+.selbar .txt{font-weight:700}
+.selbar .btn{min-height:44px;padding:0 14px;box-shadow:none;border-color:#fff}
+#toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:2000;display:grid;gap:8px;justify-items:center;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
+.toast{display:flex;align-items:center;gap:10px;background:var(--paper);border:2.5px solid var(--ink);border-radius:16px;padding:10px 16px;box-shadow:0 5px 0 var(--ink);font-weight:700;animation:dropIn .35s cubic-bezier(.3,1.5,.5,1)}
+.toast .ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--grass);color:#fff}
+.toast.warn .ic{background:var(--tomato)}
+.toast .ic svg{width:18px;height:18px}
+.toast .ic path{stroke-dasharray:24;stroke-dashoffset:24;animation:draw .4s .15s ease forwards}
+.toast.out{animation:fadeOut .3s ease forwards}
+
+/* ---------- 對話框 ---------- */
+dialog.modal{border:3px solid var(--ink);border-radius:24px;padding:0;width:calc(100vw - 24px);max-width:700px;box-shadow:0 8px 0 var(--ink);background:var(--paper);color:var(--ink);max-height:calc(100vh - 24px);overflow:hidden}
+dialog.modal[open]{display:flex;flex-direction:column;animation:pop .25s cubic-bezier(.3,1.4,.5,1)}
+dialog.modal::backdrop{background:rgba(43,45,66,.5)}
+dialog.wide{max-width:960px}
+.m-head{display:flex;align-items:center;gap:10px;padding:12px 14px 12px 20px;background:var(--sun);border-bottom:3px solid var(--ink)}
+.m-head h2{font-size:1.3rem;flex:1}
+.m-body{padding:18px 20px;display:grid;gap:16px;overflow:auto}
+.m-foot{padding:14px 20px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;border-top:2px dashed var(--line)}
+.m-foot .left{margin-right:auto}
+.hint{margin:0;color:var(--ink2);font-size:.92rem}
+.opts{display:grid;gap:10px}
+.opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:2.5px solid var(--line);border-radius:16px;cursor:pointer;transition:border-color .15s,background-color .15s}
+.opt:hover{border-color:var(--sun-deep)}
+.opt:has(input:checked){border-color:var(--tomato);background:var(--tomato-soft)}
+.opt input{width:22px;height:22px;margin-top:3px;accent-color:var(--tomato);flex:none}
+.opt b{display:block;font-size:1.02rem}
+.opt small{color:var(--ink2);font-size:.85rem}
+.opts.row2{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.chkline{display:flex;gap:10px;align-items:center;font-weight:600;min-height:44px;cursor:pointer}
+.chkline input{width:22px;height:22px;accent-color:var(--tomato)}
+.gpick{display:flex;gap:8px;flex-wrap:wrap}
+.gpick label{display:flex;align-items:center;gap:6px;padding:6px 14px 6px 6px;border:2.5px solid var(--line);border-radius:999px;cursor:pointer;font-weight:700;min-height:48px}
+.gpick label:has(input:checked){border-color:var(--tomato);background:var(--tomato-soft)}
+.gpick input{position:absolute;opacity:0;pointer-events:none}
+.gpick .av{width:34px;height:34px}
+.filepick{display:flex;align-items:center;justify-content:center;gap:8px;border:2.5px dashed var(--sky);border-radius:16px;min-height:56px;padding:8px 14px;font-weight:700;color:var(--sky);cursor:pointer;background:var(--sky-soft);text-align:center}
+.filepick input{position:absolute;opacity:0;width:1px;height:1px}
+.imp-preview{display:grid;gap:10px}
+.imp-sum{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-weight:700}
+.imp-warn{background:var(--tomato-soft);border-radius:12px;padding:8px 12px;font-size:.88rem;color:#8A2418;font-weight:600}
+.minis{display:flex;flex-wrap:wrap;gap:6px;max-height:190px;overflow:auto;padding:2px}
+.mini{display:flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px 2px 2px;font-size:.85rem;font-weight:700;border:2px solid var(--line);background:#fff}
+.mini .av{width:26px;height:26px}
+.mini.g-M{background:var(--sky-soft)}.mini.g-F{background:var(--pink-soft)}.mini.g-T{background:var(--grass-soft)}
+.err{color:var(--tomato);font-weight:700;font-size:.88rem;margin:0}
+.note-box{background:var(--sky-soft);border-radius:14px;padding:10px 14px;font-size:.9rem;font-weight:600;color:#114A7A}
+#pvBox{background:#E9E4DA;border-radius:16px;padding:16px;display:grid;gap:16px;justify-items:center;max-height:62vh;overflow:auto}
+.pv-holder{position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.18);background:#fff;flex:none}
+.pv-holder .page{position:absolute;left:0;top:0;transform-origin:0 0}
+
+/* ---------- 動畫 ---------- */
+@keyframes bob{to{transform:translateY(-2px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes steer{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}}
+@keyframes pop{from{transform:scale(.92);opacity:0}to{transform:none;opacity:1}}
+@keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes dropIn{from{transform:translateY(-24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fadeOut{to{transform:translateY(-12px);opacity:0}}
+@keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes selPulse{50%{outline-color:var(--sun-deep)}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+
+/* ---------- 平板／手機 ---------- */
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  body{padding-bottom:200px}
+  #tray{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:none;z-index:50;border-radius:22px 22px 0 0;border-bottom:none;box-shadow:0 -4px 0 var(--ink);
+    padding:10px max(14px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));gap:6px}
+  .tray-tip{display:none}
+  #trayList{display:flex;overflow-x:auto;overflow-y:hidden;min-height:70px;padding:4px 2px 6px}
+  #trayList .pcard{flex:none;min-width:150px;touch-action:pan-x}
+  #trayList .empty{display:flex;flex-wrap:wrap;justify-content:center;width:100%;padding:4px}
+  #trayList .empty svg{display:none}
+  .selbar{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:620px){
+  html{font-size:17px}
+  .top{padding:14px}
+  .brand h1{font-size:1.4rem}
+  .toolbar .btn{padding:0 14px}
+  .toolbar .lbl-long{display:none}
+  .savestate{order:9;width:100%}
+  .bus-outer{padding:0 10px}
+  .wheel{width:12px;height:56px}
+  .wheel::after{display:none}
+  .bus-body{padding:10px 8px 12px;border-radius:56px 56px 22px 22px}
+  .cabin{padding:8px 6px;gap:7px}
+  .frontrow,.row{gap:4px;grid-template-columns:1fr 1fr .3fr 1fr 1fr}
+  .gridrows{gap:7px 4px;grid-template-columns:1fr 1fr .3fr 1fr 1fr}
+  .row-last{grid-template-columns:repeat(5,1fr)}
+  .seat{min-height:68px;border-radius:11px}
+  .seat .pcard{padding:4px 4px 5px;column-gap:3px;border-radius:10px}
+  .seat .av{width:22px;height:22px}
+  .seat .pno{font-size:.66rem}
+  .seat .pname{font-size:.8rem}
+  .seat .pnote{display:none}
+  .seat.filled .sno{display:none}
+  .toolbar .sp{display:none}
+  .aisle{font-size:.6rem}
+  .driver,.door{font-size:.8rem;min-height:42px}
+  .driver svg{width:20px;height:20px}
+  .lamp{display:none}
+  .windshield{font-size:.85rem;min-height:42px}
+  .exit,.stepzone{font-size:.7rem}
+  .aisle{font-size:.55rem}
+  .rsv{font-size:.55rem;bottom:4px}
+  .lockbtn{width:24px;height:24px;top:-8px;right:-5px}
+  .lockbtn svg{width:12px;height:12px}
+}
+
+/* =================== A4 列印頁 =================== */
+#printArea{display:none}
+.page{width:190mm;height:277mm;display:flex;flex-direction:column;gap:2.6mm;font-family:var(--f-body);color:#1f1f1f;background:#fff;overflow:hidden;padding:0;line-height:1.3}
+.pg-head{display:flex;align-items:center;justify-content:space-between;gap:4mm;border-radius:4mm;padding:2.6mm 5mm;background:#FFC93C;border:.6mm solid #2B2D42}
+.pg-school{font-size:9pt;font-weight:700;letter-spacing:.6mm}
+.pg-title{font-family:var(--f-display);font-size:19pt;line-height:1.2}
+.pg-busno{font-family:var(--f-display);font-size:22pt;background:#fff;border:.6mm solid #2B2D42;border-radius:3mm;padding:.5mm 5mm;white-space:nowrap}
+.pg-meta{display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:1.4mm 4mm;font-size:10.5pt;padding:0 1mm}
+.pg-meta div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-meta b{font-weight:700;margin-right:1.6mm;color:#555}
+.pg-dir{text-align:center;font-weight:700;font-size:9.5pt;letter-spacing:.5mm}
+.pg-bus{flex:1;min-height:0;display:flex;flex-direction:column;gap:1.5mm;border:.7mm solid #2B2D42;border-radius:15mm 15mm 5mm 5mm;padding:3mm 3mm 3mm;background:#FFF1C7}
+.pg-front{display:grid;grid-template-columns:1fr 1fr .4fr 1fr 1fr;gap:1.5mm;height:9mm;flex:none}
+.pg-front > div{border:.4mm dashed #777;border-radius:2mm;display:flex;align-items:center;justify-content:center;gap:1.5mm;font-size:9.5pt;font-weight:700;background:#fff}
+.pg-front svg{width:5mm;height:5mm}
+.pg-row{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr .4fr 1fr 1fr;gap:1.5mm}
+.pg-grid{min-height:0;display:grid;grid-template-columns:1fr 1fr .4fr 1fr 1fr;gap:1.5mm}
+.pg-row.last{grid-template-columns:repeat(5,1fr)}
+.pg-seat{position:relative;border:.4mm solid #2B2D42;border-radius:2.2mm;background:#fff;padding:.8mm 1.6mm;display:flex;flex-direction:column;justify-content:center;min-height:0;overflow:hidden}
+.pg-seat.M{background:#DCEEFF}.pg-seat.F{background:#FFE0EE}.pg-seat.T{background:#DDF3E3}.pg-seat.U{background:#F1EEE7}
+.pg-seat.empty{border:.35mm dashed #A99B80;background:rgba(255,255,255,.6)}
+.pg-sno{position:absolute;top:.5mm;left:1.3mm;font-size:7pt;color:#666;font-variant-numeric:tabular-nums}
+.pg-seat.empty .pg-sno{inset:0;display:grid;place-items:center;font-size:10pt;color:#A99B80}
+.pg-chk{position:absolute;right:1.2mm;top:.4mm;font-size:6.5pt;color:#444;white-space:nowrap}
+.pg-who{display:flex;align-items:center;gap:1.4mm;margin-top:1.8mm;min-width:0}
+.pg-who .av{width:7.5mm;height:7.5mm}
+.pg-no{font-size:8.5pt;font-weight:700;color:#444;white-space:nowrap}
+.pg-g{display:none}
+.pg-name{font-size:12.5pt;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-txt{min-width:0}
+.pg-note{font-size:7pt;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.3mm}
+.pg-aisle{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:7pt;color:#8F8167;line-height:1.2}
+.pg-step{grid-column:span 2;border:.4mm dashed #1C74C0;border-radius:2mm;display:flex;align-items:center;justify-content:center;font-size:9pt;color:#1C74C0;font-weight:700;background:#fff}
+.pg-rsv{position:absolute;left:0;right:0;bottom:1mm;text-align:center;font-size:7pt;color:#A99B80}
+.page.mono .pg-step{color:#333;border-color:#777}
+.pg-exit{grid-column:span 2;border:.4mm solid #1C74C0;border-radius:2mm;display:flex;align-items:center;justify-content:center;font-size:9.5pt;color:#1C74C0;font-weight:700;background:#fff}
+.pg-foot{display:grid;gap:2mm;font-size:10pt;flex:none}
+.pg-legend{display:flex;gap:2mm 4.5mm;align-items:center;flex-wrap:wrap}
+.pg-legend span{display:inline-flex;align-items:center;gap:1.2mm;font-weight:700}
+.pg-legend .av{width:5.5mm;height:5.5mm}
+.pg-sign{display:flex;gap:6mm;flex-wrap:wrap;justify-content:space-between;border-top:.3mm solid #333;padding-top:1.6mm}
+/* 黑白列印：省墨，改用灰階＋文字區分 */
+.page.mono .pg-head{background:#fff}
+.page.mono .pg-bus{background:#fff}
+.page.mono .pg-seat{background:#fff!important}
+.page.mono .pg-seat.F{border-style:solid;border-width:.7mm}
+.page.mono .pg-front>div,.page.mono .pg-exit{color:#333;border-color:#777}
+.page.mono .av{filter:grayscale(1) contrast(1.15)}
+.page.mono .pg-g{display:inline}
+@media print{
+  @page{size:A4 portrait;margin:10mm}
+  html,body{background:#fff!important;padding:0!important;margin:0!important;background-image:none!important}
+  body > *:not(#printArea){display:none!important}
+  #printArea{display:block!important}
+  .page{break-after:page;page-break-after:always}
+  .page:last-child{break-after:auto;page-break-after:auto}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
+</style>
+
+<div class="wrap" id="app">
+  <!-- ===== 頁首：活動資料＋工具列 ===== -->
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 64 48" aria-hidden="true">
+        <g class="lb">
+          <rect x="3" y="5" width="57" height="31" rx="9" fill="#FFC93C" stroke="#2B2D42" stroke-width="3"/>
+          <rect x="9" y="10" width="11" height="10" rx="2.5" fill="#BFE3FF" stroke="#2B2D42" stroke-width="2.5"/>
+          <rect x="24" y="10" width="11" height="10" rx="2.5" fill="#BFE3FF" stroke="#2B2D42" stroke-width="2.5"/>
+          <rect x="39" y="10" width="15" height="10" rx="2.5" fill="#BFE3FF" stroke="#2B2D42" stroke-width="2.5"/>
+          <rect x="4.5" y="25" width="54" height="4" fill="#D9412F"/>
+        </g>
+        <g class="wl"><circle cx="17" cy="38" r="6.5" fill="#2B2D42"/><circle cx="17" cy="38" r="2" fill="#fff"/><rect x="16.2" y="32.5" width="1.6" height="3" fill="#fff"/></g>
+        <g class="wl"><circle cx="47" cy="38" r="6.5" fill="#2B2D42"/><circle cx="47" cy="38" r="2" fill="#fff"/><rect x="46.2" y="32.5" width="1.6" height="3" fill="#fff"/></g>
+      </svg>
+      <div>
+        <div class="eyebrow">高雄市楠梓國小</div>
+        <h1>遊覽車座位表</h1>
+      </div>
+      <div class="act">
+        <label class="sr-only" for="actName">活動名稱</label>
+        <input id="actName" class="act-name" maxlength="40" placeholder="輸入活動名稱，例如：三年級校外教學" autocomplete="off">
+        <div class="fields">
+          <label class="field">出發日期<input id="actDate" class="inp" type="date"></label>
+          <label class="field">集合地點<input id="actPlace" class="inp" maxlength="30" placeholder="例如：學校前門" autocomplete="off"></label>
+        </div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-sky" data-act="import">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>匯入名單</button>
+      <button class="btn btn-primary" data-act="auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 5.3L20 9l-4.4 3.8L17 18.5 12 15.6 7 18.5l1.4-5.7L4 9l5.8-.7z"/></svg>一鍵安排</button>
+      <button class="btn btn-grass" data-act="print">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z"/></svg>列印 A4</button>
+      <button class="btn" data-act="roll" id="btnRoll">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg><span>點名<span class="lbl-long">模式</span></span></button>
+      <span class="sp"></span>
+      <span class="savestate" id="saveState" role="status"></span>
+      <button class="btn btn-icon" data-act="undo" id="btnUndo" title="復原（Ctrl+Z）" aria-label="復原">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+      <button class="btn btn-icon" data-act="redo" id="btnRedo" title="重做（Ctrl+Y）" aria-label="重做">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+      <details class="menu" id="menu">
+        <summary class="btn">更多 ▾</summary>
+        <div class="menu-pop">
+          <button data-act="addPerson">＋ 新增學生或老師</button>
+          <button data-act="addBus">＋ 新增一台車</button>
+          <hr>
+          <button data-act="print">下載座位圖（圖片）／列印</button>
+          <button data-act="exportXlsx">匯出座位名單（Excel）</button>
+          <button data-act="saveJson">下載存檔（換電腦／交接用）</button>
+          <button data-act="openJson">開啟存檔</button>
+          <hr>
+          <button data-act="sample">載入範例資料</button>
+          <button data-act="clearAll" style="color:var(--tomato)">全部清空，重新開始</button>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <div class="samplebar" id="sampleBar" hidden>
+    <span>目前顯示的是<b>範例資料</b>，可以先拖拉玩玩看。準備好就匯入你班上的名單。</span>
+    <button class="btn btn-sun" data-act="import">匯入我的名單</button>
+    <button class="btn" data-act="clearSample">清空範例</button>
+  </div>
+
+  <main class="layout">
+    <!-- ===== 左側：尚未安排 ===== -->
+    <aside id="tray" aria-label="尚未安排座位的乘客">
+      <div class="tray-head">
+        <h2>尚未安排</h2>
+        <span class="badge" id="trayCount">0</span>
+        <button class="btn btn-icon btn-ghost" data-act="addPerson" title="新增學生或老師" aria-label="新增學生或老師">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <p class="tray-tip">把名字拖到座位上；拖到有人的座位會互換。也可以先點名字、再點座位。</p>
+      <div id="trayList"></div>
+    </aside>
+
+    <!-- ===== 右側：遊覽車 ===== -->
+    <section class="stage" aria-label="遊覽車座位">
+      <div class="tabs" id="tabs"></div>
+      <div class="businfo" id="busInfo"></div>
+      <div class="stats" id="stats"></div>
+      <div class="rollbar">
+        <span class="rollnum" id="rollNum">0 / 0</span>
+        <p>點名模式：學生上車就點一下他的座位，會打勾 ✓。再點一次可以取消。</p>
+        <button class="btn" data-act="clearRoll">清除點名</button>
+        <button class="btn btn-grass" data-act="roll">結束點名</button>
+      </div>
+      <div class="bus-outer" id="bus"></div>
+    </section>
+  </main>
+</div>
+
+<!-- 選取提示列 -->
+<div class="selbar" id="selBar" hidden></div>
+<div id="toast" aria-live="polite"></div>
+<div id="printArea"></div>
+<input type="file" id="fileJson" accept=".json,application/json" hidden>
+
+<!-- ===== 對話框：匯入名單 ===== -->
+<dialog class="modal" id="dlgImport" aria-labelledby="impTitle">
+  <div class="m-head"><h2 id="impTitle">匯入學生名單</h2><button class="btn btn-icon btn-ghost" data-close aria-label="關閉">✕</button></div>
+  <div class="m-body">
+    <p class="hint">在 Excel 或 Google 試算表選取「座號、姓名、性別、備註」幾欄，複製後貼在下面。只有姓名也可以；性別寫「男／女」就會顯示不同頭像。</p>
+    <label class="field">貼上名單
+      <textarea id="impText" class="inp" rows="7" placeholder="1	陳柏宇	男&#10;2	黃冠廷	男	會暈車&#10;16	林品妍	女"></textarea>
+    </label>
+    <label class="filepick">
+      <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M9 14l2 2 4-4"/></svg>
+      或選擇 Excel／CSV 檔案
+    </label>
+    <div class="fields">
+      <label class="field">放到哪一台車<select id="impBus" class="inp"></select></label>
+      <label class="field">班級<input id="impCls" class="inp" maxlength="20" placeholder="例如：三年1班" autocomplete="off"></label>
+    </div>
+    <div class="opts row2">
+      <label class="opt"><input type="radio" name="impMode" value="add" checked><span><b>加入名單</b><small>保留這台車原本的人</small></span></label>
+      <label class="opt"><input type="radio" name="impMode" value="replace"><span><b>取代原本的學生</b><small>先清掉這台車的學生（老師保留）</small></span></label>
+    </div>
+    <div id="impPreview" class="imp-preview"></div>
+  </div>
+  <div class="m-foot">
+    <button class="btn" data-close>取消</button>
+    <button class="btn btn-primary" id="impGo" disabled>匯入名單</button>
+  </div>
+</dialog>
+
+<!-- ===== 對話框：一鍵安排 ===== -->
+<dialog class="modal" id="dlgAuto" aria-labelledby="autoTitle">
+  <div class="m-head"><h2 id="autoTitle">一鍵安排座位</h2><button class="btn btn-icon btn-ghost" data-close aria-label="關閉">✕</button></div>
+  <div class="m-body">
+    <div class="opts">
+      <label class="opt"><input type="radio" name="autoMode" value="no" checked><span><b>依座號順序</b><small>1 號坐最前面，依序往後坐。</small></span></label>
+      <label class="opt"><input type="radio" name="autoMode" value="pair"><span><b>同性兩人同坐</b><small>男生跟男生、女生跟女生坐同一組兩人座，前後交錯。</small></span></label>
+      <label class="opt"><input type="radio" name="autoMode" value="alt"><span><b>男女交錯</b><small>依座號一男一女排下去。</small></span></label>
+      <label class="opt"><input type="radio" name="autoMode" value="random"><span><b>隨機排</b><small>每按一次結果都不一樣。</small></span></label>
+    </div>
+    <div>
+      <label class="chkline"><input type="checkbox" id="autoTeacher" checked>老師坐第一排</label>
+      <label class="chkline"><input type="checkbox" id="autoPri" checked>備註有「暈車、前排」的學生排在前面</label>
+    </div>
+    <div class="opts row2">
+      <label class="opt"><input type="radio" name="autoScope" value="all" checked><span><b>全部重排</b><small>鎖定 🔒 的座位不會動</small></span></label>
+      <label class="opt"><input type="radio" name="autoScope" value="rest"><span><b>只排還沒座位的人</b><small>已坐好的人不動</small></span></label>
+    </div>
+  </div>
+  <div class="m-foot">
+    <button class="btn" data-close>取消</button>
+    <button class="btn btn-primary" id="autoGo">開始安排</button>
+  </div>
+</dialog>
+
+<!-- ===== 對話框：車輛資料 ===== -->
+<dialog class="modal" id="dlgBus" aria-labelledby="busTitleH">
+  <div class="m-head"><h2 id="busTitleH">車輛資料</h2><button class="btn btn-icon btn-ghost" data-close aria-label="關閉">✕</button></div>
+  <div class="m-body">
+    <div class="fields">
+      <label class="field">車輛名稱<input id="busTitle" class="inp" maxlength="12" placeholder="例如：1號車"></label>
+      <label class="field">班級<input id="busCls" class="inp" maxlength="30" placeholder="例如：三年1班、三年2班"></label>
+    </div>
+    <div class="fields">
+      <label class="field">隨車老師<input id="busTeacher" class="inp" maxlength="30" placeholder="例如：王老師"></label>
+      <label class="field">車牌<input id="busPlate" class="inp" maxlength="12" placeholder="例如：KAA-1234"></label>
+    </div>
+    <div class="fields">
+      <label class="field">司機<input id="busDriver" class="inp" maxlength="12" placeholder="例如：李先生"></label>
+      <label class="field">司機電話<input id="busPhone" class="inp" maxlength="20" inputmode="tel" placeholder="例如：0912-345-678"></label>
+    </div>
+    <label class="field">車型<select id="busLayout" class="inp"></select></label>
+  </div>
+  <div class="m-foot">
+    <button class="btn btn-danger left" id="busDel">刪除這台車</button>
+    <button class="btn" data-close>取消</button>
+    <button class="btn btn-primary" id="busSave">儲存</button>
+  </div>
+</dialog>
+
+<!-- ===== 對話框：學生／老師資料 ===== -->
+<dialog class="modal" id="dlgPerson" aria-labelledby="pTitle">
+  <div class="m-head"><h2 id="pTitle">編輯資料</h2><button class="btn btn-icon btn-ghost" data-close aria-label="關閉">✕</button></div>
+  <div class="m-body">
+    <div class="gpick" id="pG" role="radiogroup" aria-label="身分"></div>
+    <div class="fields">
+      <label class="field" style="max-width:140px">座號<input id="pNo" class="inp" maxlength="3" inputmode="numeric" placeholder="例如：5"></label>
+      <label class="field">姓名<input id="pName" class="inp" maxlength="20" autocomplete="off"></label>
+    </div>
+    <p class="err" id="pErr" hidden>請輸入姓名</p>
+    <div class="fields">
+      <label class="field">班級<input id="pCls" class="inp" maxlength="20"></label>
+      <label class="field">搭乘車輛<select id="pBus" class="inp"></select></label>
+    </div>
+    <label class="field">備註（會印在座位上，例如：會暈車、要坐前排）<input id="pNote" class="inp" maxlength="30"></label>
+  </div>
+  <div class="m-foot">
+    <button class="btn btn-danger left" id="pDel">刪除</button>
+    <button class="btn" data-close>取消</button>
+    <button class="btn btn-primary" id="pSave">儲存</button>
+  </div>
+</dialog>
+
+<!-- ===== 對話框：列印 ===== -->
+<dialog class="modal wide" id="dlgPrint" aria-labelledby="prTitle">
+  <div class="m-head"><h2 id="prTitle">列印座位表（每台車一張 A4）</h2><button class="btn btn-icon btn-ghost" data-close aria-label="關閉">✕</button></div>
+  <div class="m-body">
+    <div class="opts row2">
+      <label class="opt"><input type="radio" name="prRange" value="cur" checked><span><b>只印目前這台車</b></span></label>
+      <label class="opt"><input type="radio" name="prRange" value="all"><span><b>全部車輛</b><small id="prAllCnt"></small></span></label>
+    </div>
+    <div class="opts row2">
+      <label class="opt"><input type="radio" name="prColor" value="mono" checked><span><b>黑白列印</b><small>省墨；用頭像和「男／女」字樣區分</small></span></label>
+      <label class="opt"><input type="radio" name="prColor" value="color"><span><b>彩色列印</b><small>男生藍、女生粉、老師綠</small></span></label>
+    </div>
+    <label class="chkline"><input type="checkbox" id="prRoll" checked>每個座位印上「去□ 回□」點名格</label>
+    <p class="note-box" id="prNote" hidden>這是預覽視窗，沒辦法列印或下載圖片。請用 Chrome 打開 https://ntpsbing.github.io/bus-seats/ 再操作。</p>
+    <div id="pvBox" aria-label="列印預覽"></div>
+  </div>
+  <div class="m-foot">
+    <button class="btn" data-close>關閉</button>
+    <button class="btn btn-sky" id="imgGo">下載成圖片（PNG）</button>
+    <button class="btn btn-grass" id="prGo">開始列印</button>
+  </div>
+</dialog>
+
+<!-- ===== 對話框：確認 ===== -->
+<dialog class="modal" id="dlgConfirm" aria-labelledby="cfTitle" style="max-width:480px">
+  <div class="m-head"><h2 id="cfTitle">確認</h2></div>
+  <div class="m-body"><p id="cfMsg" style="margin:0;font-weight:600"></p></div>
+  <div class="m-foot">
+    <button class="btn" data-close>取消</button>
+    <button class="btn btn-primary" id="cfOk">確定</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+'use strict';
+/* =====================================================================
+   楠小遊覽車座位表
+   給下一位接手的老師：
+   1. 車型（座位怎麼排）在下面的 LAYOUTS，要新增車型只改這裡。
+   2. 所有資料都放在變數 S（State），會自動存在這台電腦的瀏覽器裡。
+      要換電腦或交接，用「更多 → 下載存檔」得到 .json 檔，再用「開啟存檔」讀回來。
+   3. 學生姓名一律用 textContent 顯示，不會被當成程式執行（資安）。
+   4. 本頁不會把名單上傳到任何網站。
+   ===================================================================== */
+
+/* ---------- 1. 車型設定 ---------- */
+// 每一排的格子：左邊 A、B，中間走道（null），右邊 C、D；最後一排 5 人座。
+// 以 # 開頭的是「不是座位」的格子（佔右邊兩格）：#STEP 前門上下車區、#EXIT 後門、#SKIP 被上一排的大格子蓋住。
+// rl / rr：這一排在左邊、右邊各算第幾排（右邊從第 3 排的位置才開始有座位）。
+// reserve：盡量不安排人的座位（一鍵安排時最後才用）。
+function layout43(){
+  // 左邊 11 排。右邊：前門上下車區（佔左 1、左 2 的高度，畫成一格）→ 右 1～右 5 → 後門 → 右 6～右 8。
+  const rows = []; let rr = 0;
+  for (let r = 1; r <= 11; r++){
+    let right, rLabel = '', span = 0;
+    if (r === 1){ right = ['#STEP']; span = 2; }  // 前門上下車：一格跨兩排
+    else if (r === 2) right = ['#SKIP'];          // 被上面那一格蓋住
+    else if (r === 8) right = ['#EXIT'];          // 後門（右 5 和右 6 之間）
+    else { rr++; right = [`R${rr}C`, `R${rr}D`]; rLabel = rr; }
+    rows.push({ type:'std', rl:r, rr:rLabel, span, cells:[`L${r}A`, `L${r}B`, null, ...right] });
+  }
+  rows.push({ type:'last', cells:[1,2,3,4,5].map(i => `B${i}`) });
+  return rows;   // 左 11×2=22 ＋ 右 8×2=16 ＋ 後排 5 ＝ 43
+}
+function layout45(){
+  const rows = [];
+  for (let r = 1; r <= 10; r++) rows.push({ type:'std', rl:r, rr:r, cells:[`L${r}A`, `L${r}B`, null, `R${r}C`, `R${r}D`] });
+  rows.push({ type:'last', cells:[1,2,3,4,5].map(i => `B${i}`) });
+  return rows;   // 10×4 ＋ 5 ＝ 45
+}
+const LAYOUTS = {
+  '43': { name:'43 人座大巴（左 11 排、右 8 排、右側後門）', rows: layout43(), reserve:['L1A','L1B','L2A','L2B'] },
+  '45': { name:'45 人座大巴（左右各 10 排，沒有後門）', rows: layout45(), reserve:[] },
+};
+const DEFAULT_LAYOUT = '43';
+const isSeat = c => !!c && c[0] !== '#';
+const SPECIAL = { '#STEP':'前門上下車', '#EXIT':'後門 ⇲' };
+const seatOrderCache = {};
+function seatOrder(key){ // 由前到後、由左到右的座位順序（座位編號就照這個）
+  if (!seatOrderCache[key]) seatOrderCache[key] = (LAYOUTS[key] || LAYOUTS[DEFAULT_LAYOUT]).rows.flatMap(r => r.cells.filter(isSeat));
+  return seatOrderCache[key];
+}
+// 把一般排畫成同一個格線（這樣「前門上下車」才能一格跨兩排）；mk(c, r) 負責做出每一格
+function buildGrid(L, cls, mk){
+  const grid = h('div', { class:cls });
+  L.rows.filter(r => r.type === 'std').forEach((r, i) => {
+    let col = 1;
+    r.cells.forEach(c => {
+      if (c === '#SKIP'){ col += 2; return; }
+      const el = mk(c, r);
+      el.style.gridRow = r.span && c && !isSeat(c) ? `${i + 1} / span ${r.span}` : String(i + 1);
+      if (c && !isSeat(c)){ el.style.gridColumn = `${col} / span 2`; col += 2; } else { el.style.gridColumn = String(col); col++; }
+      grid.append(el);
+    });
+  });
+  return grid;
+}
+const reserveSet = key => new Set((LAYOUTS[key] || {}).reserve || []);
+function fillOrder(key){ // 一鍵安排用的順序：「盡量不坐」的座位放最後
+  const rs = reserveSet(key); const o = seatOrder(key);
+  return [...o.filter(s => !rs.has(s)), ...o.filter(s => rs.has(s))];
+}
+
+/* ---------- 2. 頭像圖示（程式內建，不含使用者資料） ---------- */
+const AV = {
+  M:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#BFDDFB"/><circle cx="20" cy="23.5" r="10.5" fill="#FFDCC0"/><path d="M9 22C8.3 12.5 13.6 7.5 20.3 7.5 27 7.5 32 12 31.2 22c-1.6-4.6-5.4-7.2-11-7.2S10.8 17.4 9 22z" fill="#3B2A20"/><path d="M13 12.5 17 8.3l1.6 4.4 3.4-4.8 1.3 4.8" fill="#3B2A20"/><circle cx="16.2" cy="24.6" r="1.5" fill="#1d1d1d"/><circle cx="23.8" cy="24.6" r="1.5" fill="#1d1d1d"/><path d="M16.8 28.6q3.2 2.4 6.4 0" stroke="#1d1d1d" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`,
+  F:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#FFC9E0"/><circle cx="8.5" cy="14" r="5" fill="#3B2A20"/><circle cx="31.5" cy="14" r="5" fill="#3B2A20"/><path d="M5.6 16.6l5-2.6v5.2zM34.4 16.6l-5-2.6v5.2z" fill="#FF4F95"/><path d="M9.5 24c0-9 4.6-15 10.5-15s10.5 6 10.5 15v7.5h-21z" fill="#3B2A20"/><circle cx="20" cy="24" r="9.8" fill="#FFDCC0"/><path d="M10.2 22.5c1.8-6 5.4-8.8 9.8-8.8s8 2.8 9.8 8.8c-4.2-.6-7.6-2.8-9.8-5.6-2.2 2.8-5.6 5-9.8 5.6z" fill="#3B2A20"/><circle cx="16.3" cy="25" r="1.5" fill="#1d1d1d"/><circle cx="23.7" cy="25" r="1.5" fill="#1d1d1d"/><circle cx="13.9" cy="28.2" r="1.7" fill="#FF8FB4" opacity=".75"/><circle cx="26.1" cy="28.2" r="1.7" fill="#FF8FB4" opacity=".75"/><path d="M17.6 29q2.4 1.9 4.8 0" stroke="#1d1d1d" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>`,
+  T:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#BDE8CA"/><circle cx="20" cy="23.5" r="10.5" fill="#FFDCC0"/><path d="M9.3 21.5C9 12.8 14 8 20.3 8 27 8 31.5 12.8 30.8 21.5c-3-5-8-6.4-12.5-5.2-3.2.8-6.4 2.4-9 5.2z" fill="#55514D"/><circle cx="16" cy="24.4" r="3.6" fill="#fff" fill-opacity=".4" stroke="#1d1d1d" stroke-width="1.5"/><circle cx="24" cy="24.4" r="3.6" fill="#fff" fill-opacity=".4" stroke="#1d1d1d" stroke-width="1.5"/><path d="M19.6 24.4h.8" stroke="#1d1d1d" stroke-width="1.5"/><circle cx="16" cy="24.6" r="1.2" fill="#1d1d1d"/><circle cx="24" cy="24.6" r="1.2" fill="#1d1d1d"/><path d="M17 29.6q3 2 6 0" stroke="#1d1d1d" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M15 34.5l5 3 5-3" stroke="#2C8C47" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  U:`<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#E3DED4"/><circle cx="20" cy="23.5" r="10.5" fill="#FFDCC0"/><path d="M9.5 21C9.5 13 14 8.5 20 8.5S30.5 13 30.5 21c-2.8-3.8-6.4-5.3-10.5-5.3S12.3 17.2 9.5 21z" fill="#6B5B4E"/><circle cx="16.2" cy="24.6" r="1.5" fill="#1d1d1d"/><circle cx="23.8" cy="24.6" r="1.5" fill="#1d1d1d"/><path d="M17 28.8h6" stroke="#1d1d1d" stroke-width="1.5" stroke-linecap="round"/></svg>`
+};
+const ICON = {
+  lock:`<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2.6" fill="none"/></svg>`,
+  unlock:`<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 11V8a4 4 0 0 1 7.6-1.8" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>`,
+  wheel:`<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M3.5 11h6M14.5 11h6M12 14.4V21" stroke="currentColor" stroke-width="2.4"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  warn:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v8M12 18v.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`,
+};
+const G_NAME = { M:'男', F:'女', T:'老師', U:'未填' };
+
+/* ---------- 3. 資料（State） ---------- */
+const KEY = 'nanzi-bus-seats-v1';
+const uid = () => Math.random().toString(36).slice(2, 9);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function newBus(n){ return { id:uid(), title:`${n}號車`, cls:'', teacher:'', plate:'', driver:'', phone:'', layout:DEFAULT_LAYOUT, seats:{}, locked:{}, checked:{} }; }
+function blank(){ const b = newBus(1); return { v:1, sample:false, act:{ name:'', date:'', place:'' }, buses:[b], people:[], cur:b.id }; }
+
+let S = null; // 啟動時在最下面載入
+const ui = { sel:null, roll:false, dropFrom:null };
+let undoStack = [], redoStack = [];
+
+function load(){
+  try { const raw = localStorage.getItem(KEY); if (!raw) return null; const d = JSON.parse(raw); return valid(d) ? d : null; } catch(e){ return null; }
+}
+// 自動儲存：每次變動都存進這台電腦的瀏覽器，下次打開同一個檔案就會看到
+function persist(){
+  const el = document.getElementById('saveState');
+  try {
+    localStorage.setItem(KEY, JSON.stringify(S));
+    if (el){ const t = new Date(); el.textContent = `✓ 已自動儲存 ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; el.classList.remove('bad'); }
+  } catch(e){
+    if (el){ el.textContent = '⚠ 這個瀏覽器不能自動儲存，請用「更多 → 下載存檔」'; el.classList.add('bad'); }
+  }
+}
+function valid(d){ return d && Array.isArray(d.buses) && d.buses.length && Array.isArray(d.people) && d.act; }
+// 修正資料：刪掉不存在的人、不屬於這台車的座位等
+function normalize(){
+  const ids = new Set(S.people.map(p => p.id));
+  for (const b of S.buses){
+    b.seats ||= {}; b.locked ||= {}; b.checked ||= {};
+    if (!LAYOUTS[b.layout]) b.layout = DEFAULT_LAYOUT;
+    const okSeats = new Set(seatOrder(b.layout));
+    for (const [sid, pid] of Object.entries(b.seats)){
+      const p = S.people.find(x => x.id === pid);
+      if (!okSeats.has(sid) || !ids.has(pid) || !p || p.bus !== b.id) delete b.seats[sid];
+    }
+    for (const sid of Object.keys(b.locked)) if (!b.seats[sid]) delete b.locked[sid];
+    for (const pid of Object.keys(b.checked)) if (!ids.has(pid)) delete b.checked[pid];
+  }
+  for (const p of S.people) if (!S.buses.some(b => b.id === p.bus)) p.bus = S.buses[0].id;
+  if (!S.buses.some(b => b.id === S.cur)) S.cur = S.buses[0].id;
+}
+function commit(fn, opts = {}){
+  undoStack.push(JSON.stringify(S)); if (undoStack.length > 60) undoStack.shift();
+  redoStack = [];
+  fn(); persist(); render(opts);
+}
+function undo(){ if (!undoStack.length) return; redoStack.push(JSON.stringify(S)); S = JSON.parse(undoStack.pop()); ui.sel = null; persist(); render(); toast('已復原'); }
+function redo(){ if (!redoStack.length) return; undoStack.push(JSON.stringify(S)); S = JSON.parse(redoStack.pop()); ui.sel = null; persist(); render(); toast('已重做'); }
+
+/* ---------- 4. 小工具 ---------- */
+const $ = s => document.querySelector(s);
+function h(tag, props, ...kids){
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})){
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'text') el.textContent = v;
+    else if (k === 'svg') el.innerHTML = v;            // 只用在程式內建的圖示
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()){ if (c == null || c === false) continue; el.append(c.nodeType ? c : document.createTextNode(String(c))); }
+  return el;
+}
+const bus = () => S.buses.find(b => b.id === S.cur) || S.buses[0];
+const person = id => S.people.find(p => p.id === id);
+const peopleOf = b => S.people.filter(p => p.bus === b.id);
+const seatOf = (b, pid) => Object.keys(b.seats).find(k => b.seats[k] === pid);
+const numOf = p => parseInt(p.no, 10) || 999;
+const byNo = (a, b) => (a.g === 'T') - (b.g === 'T') || (a.cls || '').localeCompare(b.cls || '', 'zh-Hant') || numOf(a) - numOf(b) || a.name.localeCompare(b.name, 'zh-Hant');
+const unassigned = b => peopleOf(b).filter(p => !seatOf(b, p.id)).sort((x, y) => (y.g === 'T') - (x.g === 'T') || byNo(x, y));
+const noLabel = p => p.g === 'T' ? '老師' : (p.no ? `${String(p.no).padStart(2, '0')}號` : '');
+const fullLabel = p => [noLabel(p), p.name].filter(Boolean).join(' ');
+const isPri = p => /暈|前排|前面|坐前|嘔/.test(p.note || '');
+function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function fmtDate(iso){
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00'); if (isNaN(d)) return iso;
+  return `${d.getFullYear() - 1911}年${d.getMonth() + 1}月${d.getDate()}日（${'日一二三四五六'[d.getDay()]}）`;
+}
+function shake(el){ if (!reduced && el) el.animate([{transform:'translateX(0)'},{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(-5px)'},{transform:'translateX(0)'}], {duration:320}); }
+function toast(msg, type = 'ok'){
+  const t = h('div', { class:`toast ${type}` }, h('span', { class:'ic', svg: type === 'warn' ? ICON.warn : ICON.check }), h('span', { text:msg }));
+  $('#toast').append(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 320); }, type === 'warn' ? 3200 : 2200);
+}
+
+/* ---------- 5. 畫面 ---------- */
+function cardEl(p){
+  const g = p.g || 'U';
+  const el = h('div', { class:`pcard g-${g}${ui.sel === p.id ? ' is-sel' : ''}`, 'data-pid':p.id, tabindex:'0', role:'button',
+    'aria-label':`${fullLabel(p)}（${G_NAME[g]}）${p.note ? '，' + p.note : ''}` });
+  el.append(h('span', { class:'av', svg:AV[g] }), h('span', { class:'ptxt' }, h('span', { class:'pno', text:noLabel(p) }), h('span', { class:'pname', text:p.name })));
+  if (p.note) el.append(h('span', { class:'pnote', text:p.note, title:p.note }));
+  return el;
+}
+function renderHead(){
+  const set = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = v || ''; };
+  set('#actName', S.act.name); set('#actDate', S.act.date); set('#actPlace', S.act.place);
+  $('#sampleBar').hidden = !S.sample;
+  $('#btnUndo').disabled = !undoStack.length; $('#btnRedo').disabled = !redoStack.length;
+  $('#btnRoll').classList.toggle('on', ui.roll);
+  document.body.classList.toggle('roll', ui.roll);
+}
+function renderTabs(){
+  const box = $('#tabs'); box.replaceChildren();
+  S.buses.forEach(b => {
+    const cap = seatOrder(b.layout).length, n = peopleOf(b).length, seated = Object.keys(b.seats).length;
+    box.append(h('button', { class:`tab${b.id === S.cur ? ' on' : ''}`, 'data-bus':b.id, 'aria-pressed':String(b.id === S.cur) },
+      h('span', { text:b.title || '未命名' }), h('span', { class:`cnt${n > cap ? ' over' : ''}`, text:`${seated}/${cap}` })));
+  });
+  box.append(h('button', { class:'tab tab-add', 'data-act':'addBus' }, '＋ 新增車輛'));
+}
+function renderInfo(){
+  const b = bus(), box = $('#busInfo'); box.replaceChildren();
+  const items = [['班級', b.cls], ['隨車老師', b.teacher], ['車牌', b.plate], ['司機', [b.driver, b.phone].filter(Boolean).join(' ')]];
+  items.forEach(([k, v]) => { if (v) box.append(h('span', { class:'chip' }, h('b', { text:k }), v)); });
+  box.append(h('button', { class:'btn btn-sun', 'data-act':'editBus', style:'min-height:44px' }, '✎ 車輛資料'));
+}
+function renderStats(){
+  const b = bus(), ps = peopleOf(b), cap = seatOrder(b.layout).length, seated = Object.keys(b.seats).length;
+  const c = g => ps.filter(p => (p.g || 'U') === g).length;
+  const box = $('#stats'); box.replaceChildren();
+  [['M','男生'],['F','女生'],['T','老師']].forEach(([g, t]) => box.append(h('span', { class:'stat' }, h('span', { class:'av', svg:AV[g] }), t, h('b', { text:c(g) }))));
+  if (c('U')) box.append(h('span', { class:'stat' }, h('span', { class:'av', svg:AV.U }), '未填性別', h('b', { text:c('U') })));
+  box.append(h('span', { class:'stat empty-seat' }, '空位', h('b', { text:cap - seated })));
+  const nChecked = ps.filter(p => b.checked[p.id] && seatOf(b, p.id)).length;
+  $('#rollNum').textContent = `已上車 ${nChecked} / ${seated}`;
+}
+function renderTray(){
+  const b = bus(), list = unassigned(b), box = $('#trayList');
+  $('#trayCount').textContent = list.length; $('#trayCount').classList.toggle('zero', !list.length);
+  box.replaceChildren();
+  if (!peopleOf(b).length){
+    box.append(h('div', { class:'empty' },
+      h('span', { svg:document.querySelector('.logo').outerHTML }),
+      h('p', { text:`${b.title} 還沒有乘客` }),
+      h('button', { class:'btn btn-primary', 'data-act':'import' }, '匯入學生名單'),
+      h('button', { class:'btn', 'data-act':'addPerson' }, '一個一個新增')));
+  } else if (!list.length){
+    box.append(h('div', { class:'tray-done', text:'全部都有座位了！' }));
+  }
+  list.forEach(p => box.append(cardEl(p)));
+}
+function seatEl(b, sid, n){
+  const pid = b.seats[sid], p = pid && person(pid);
+  const rsv = reserveSet(b.layout).has(sid);
+  const el = h('div', { class:`seat${p ? ' filled' : ''}${rsv ? ' reserve' : ''}${b.locked[sid] ? ' locked' : ''}${p && b.checked[pid] ? ' checked' : ''}`, 'data-seat':sid, 'data-n':n });
+  if (!p){ el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button'); el.setAttribute('aria-label', `第 ${n} 號座位，空位`); }
+  el.append(h('span', { class:'sno', text:n }));
+  if (!p && rsv) el.append(h('span', { class:'rsv', text:'盡量不坐' }));
+  if (p){
+    el.append(cardEl(p));
+    el.append(h('button', { class:'lockbtn', 'data-lock':sid, title:b.locked[sid] ? '解除鎖定' : '鎖定這個座位（一鍵安排時不會動）',
+      'aria-label':b.locked[sid] ? '解除鎖定' : '鎖定座位', svg:b.locked[sid] ? ICON.lock : ICON.unlock }));
+    if (ui.roll && b.checked[pid]) el.append(h('span', { class:'chk', svg:ICON.check }));
+  }
+  return el;
+}
+function renderBus(){
+  const b = bus(), L = LAYOUTS[b.layout]; let n = 0;
+  const cabin = h('div', { class:'cabin' });
+  cabin.append(h('div', { class:'frontrow' },
+    h('div', { class:'driver' }, h('span', { svg:ICON.wheel, style:'display:flex' }), '司機'),
+    h('div', { class:'aisle' }),
+    h('div', { class:'door' }, '車門 ⇲')));
+  cabin.append(buildGrid(L, 'gridrows', (c, r) => {
+    if (c === null) return h('div', { class:'aisle', title:`左邊第 ${r.rl} 排${r.rr ? '／右邊第 ' + r.rr + ' 排' : ''}` },
+      h('span', { text:`左${r.rl}` }), r.rr ? h('span', { text:`右${r.rr}` }) : null);
+    if (!isSeat(c)) return h('div', { class:c === '#EXIT' ? 'exit' : 'stepzone', text:SPECIAL[c] });
+    return seatEl(b, c, ++n);
+  }));
+  L.rows.filter(r => r.type === 'last').forEach(r => cabin.append(h('div', { class:'row row-last' }, r.cells.map(c => seatEl(b, c, ++n)))));
+  const body = h('div', { class:'bus-body' },
+    h('div', { class:'bus-nose' }, h('span', { class:'lamp' }), h('div', { class:'windshield' }, '▲ 車頭（前進方向）'), h('span', { class:'lamp' })),
+    cabin,
+    h('div', { class:'rear' }, h('span', { class:'taillight' }), '▼ 車尾', h('span', { class:'taillight' })));
+  $('#bus').replaceChildren(h('span', { class:'wheel w1' }), h('span', { class:'wheel w2' }), h('span', { class:'wheel w3' }), h('span', { class:'wheel w4' }), body);
+}
+function renderSel(){
+  const bar = $('#selBar'); const p = ui.sel && person(ui.sel);
+  if (!p || ui.roll){ bar.hidden = true; ui.sel = p && !ui.roll ? ui.sel : null; return; }
+  const seated = seatOf(bus(), p.id);
+  bar.replaceChildren(...[
+    h('span', { class:'txt', text:`已選「${fullLabel(p)}」→ 點一個座位放進去` }),
+    h('button', { class:'btn btn-sun', 'data-act':'editSel' }, '✎ 編輯'),
+    seated ? h('button', { class:'btn', 'data-act':'unseatSel' }, '移回未安排') : null,
+    seated ? h('button', { class:'btn', 'data-act':'lockSel' }, bus().locked[seated] ? '解除鎖定' : '🔒 鎖定座位') : null,
+    h('button', { class:'btn btn-ghost', 'data-act':'cancelSel', style:'color:#fff' }, '取消')].filter(Boolean));
+  bar.hidden = false;
+}
+// 動畫：座位變動時，卡片從舊位置滑到新位置（FLIP）
+function snapRects(){ const m = new Map(); document.querySelectorAll('#app [data-pid]').forEach(el => m.set(el.dataset.pid, el.getBoundingClientRect())); return m; }
+function playFlip(old, opts){
+  document.querySelectorAll('#app [data-pid]').forEach(el => {
+    const id = el.dataset.pid, nr = el.getBoundingClientRect();
+    const or = (ui.dropFrom && ui.dropFrom.pid === id) ? ui.dropFrom.rect : old.get(id);
+    if (!or){ if (opts.popNew) el.animate([{ transform:'scale(.5)', opacity:0 }, { transform:'none', opacity:1 }], { duration:320, easing:'cubic-bezier(.3,1.5,.5,1)' }); return; }
+    const dx = or.left - nr.left, dy = or.top - nr.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    const seat = el.closest('[data-seat]');
+    const delay = opts.stagger && seat ? (+seat.dataset.n) * 28 : 0;
+    el.animate([{ transform:`translate(${dx}px,${dy}px)`, zIndex:5 }, { transform:'translate(0,0)', zIndex:5 }],
+      { duration:opts.stagger ? 560 : 360, delay, easing:'cubic-bezier(.2,.9,.25,1.12)', fill:'backwards' });
+  });
+  ui.dropFrom = null;
+}
+function render(opts = {}){
+  const old = (opts.noFlip || reduced) ? null : snapRects();
+  normalize();
+  renderHead(); renderTabs(); renderInfo(); renderStats(); renderTray(); renderBus(); renderSel();
+  if (old) playFlip(old, opts); else ui.dropFrom = null;
+}
+
+/* ---------- 6. 換座位 ---------- */
+function placeAt(pid, sid){
+  const b = bus(), from = seatOf(b, pid);
+  if (from === sid) return render();
+  if ((b.locked[sid] && b.seats[sid]) || (from && b.locked[from])){
+    toast('這個座位已鎖定 🔒，請先點鎖頭解除', 'warn'); shake(document.querySelector(`[data-seat="${sid}"]`)); return render();
+  }
+  commit(() => {
+    const other = b.seats[sid];
+    b.seats[sid] = pid;
+    if (from){ if (other) b.seats[from] = other; else delete b.seats[from]; }
+  });
+}
+function unseat(pid){
+  const b = bus(), from = seatOf(b, pid);
+  if (!from) return render();
+  if (b.locked[from]){ toast('這個座位已鎖定 🔒，請先點鎖頭解除', 'warn'); return render(); }
+  commit(() => { delete b.seats[from]; });
+}
+function toggleLock(sid){
+  const b = bus(); if (!b.seats[sid]) return;
+  commit(() => { if (b.locked[sid]) delete b.locked[sid]; else b.locked[sid] = true; }, { noFlip:true });
+  toast(b.locked[sid] ? '已鎖定，一鍵安排時這個座位不會動' : '已解除鎖定');
+}
+function toggleCheck(pid){
+  const b = bus(); if (!seatOf(b, pid)) return;
+  if (b.checked[pid]) delete b.checked[pid]; else b.checked[pid] = true;
+  persist(); render({ noFlip:true });
+  if (navigator.vibrate) try { navigator.vibrate(12); } catch(e){}
+}
+function tapCard(pid){
+  if (ui.roll) return toggleCheck(pid);
+  if (!ui.sel || ui.sel === pid){ ui.sel = ui.sel === pid ? null : pid; return render({ noFlip:true }); }
+  const tSeat = seatOf(bus(), pid);
+  if (tSeat){ const s = ui.sel; ui.sel = null; placeAt(s, tSeat); }
+  else { ui.sel = pid; render({ noFlip:true }); }
+}
+
+/* ---------- 7. 拖拉（滑鼠、手指都可以） ---------- */
+let D = null;
+document.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || ui.roll) return;
+  if (e.target.closest('[data-lock]')) return;
+  const card = e.target.closest('.pcard[data-pid]');
+  if (!card || !card.closest('#bus, #trayList')) return;
+  const seat = card.closest('[data-seat]');
+  D = { pid:card.dataset.pid, el:card, x:e.clientX, y:e.clientY, id:e.pointerId, touch:e.pointerType !== 'mouse',
+        ready:e.pointerType === 'mouse', started:false, moved:false, locked:!!(seat && bus().locked[seat.dataset.seat]) };
+  if (D.touch){
+    // 手指要先按住一下下才開始拖，直接滑動就是捲動畫面
+    D.timer = setTimeout(() => { if (D && !D.moved){ D.ready = true; card.classList.add('pressing'); if (navigator.vibrate) try { navigator.vibrate(15); } catch(err){} } }, 170);
+  }
+});
+document.addEventListener('pointermove', e => {
+  if (!D || e.pointerId !== D.id) return;
+  if (!D.started){
+    if (Math.hypot(e.clientX - D.x, e.clientY - D.y) < 6) return;
+    D.moved = true;
+    if (!D.ready){ endDrag(); return; }
+    if (D.locked){ const s = D.el.closest('[data-seat]'); endDrag(); toast('這個座位已鎖定 🔒，請先點鎖頭解除', 'warn'); shake(s); return; }
+    startDrag(e);
+  }
+  moveDrag(e);
+});
+document.addEventListener('pointerup', e => {
+  if (!D || e.pointerId !== D.id) return;
+  const d = D; const target = d.target;
+  const ghostRect = d.ghost ? d.ghost.getBoundingClientRect() : null;
+  endDrag();
+  if (d.started){
+    ui.dropFrom = { pid:d.pid, rect:ghostRect };
+    if (target && target.dataset.seat) placeAt(d.pid, target.dataset.seat);
+    else if (target && target.id === 'tray') unseat(d.pid);
+    else render();
+  } else if (!d.moved) tapCard(d.pid);
+});
+document.addEventListener('pointercancel', () => { if (D) endDrag(); });
+document.addEventListener('touchmove', e => { if (D && (D.started || D.ready)) e.preventDefault(); }, { passive:false });
+document.addEventListener('contextmenu', e => { if (e.target.closest('.pcard')) e.preventDefault(); });
+
+function startDrag(e){
+  D.started = true; ui.sel = null; $('#selBar').hidden = true;
+  const r = D.el.getBoundingClientRect();
+  const g = D.el.cloneNode(true);
+  g.removeAttribute('data-pid'); g.classList.add('ghost'); g.classList.remove('is-sel', 'pressing');
+  g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+  D.offX = e.clientX - r.left; D.offY = e.clientY - r.top;
+  document.body.append(g); D.ghost = g;
+  D.el.classList.add('dragging-src'); D.el.classList.remove('pressing');
+  document.body.classList.add('is-dragging');
+  document.querySelectorAll('#bus .seat:not(.filled)').forEach(s => s.classList.add('can-drop'));
+}
+function moveDrag(e){
+  const x = e.clientX, y = e.clientY;
+  D.ghost.style.transform = `translate(${x - D.offX}px,${y - D.offY}px) rotate(-3deg) scale(1.06)`;
+  const hit = document.elementFromPoint(x, y);
+  let t = hit && (hit.closest('#bus [data-seat]') || hit.closest('#tray'));
+  if (t !== D.target){
+    if (D.target) D.target.classList.remove('drop-hover', 'drop-no');
+    D.target = t;
+    if (t) t.classList.add(t.dataset.seat && bus().locked[t.dataset.seat] && bus().seats[t.dataset.seat] !== D.pid ? 'drop-no' : 'drop-hover');
+  }
+  if (y < 70) window.scrollBy(0, -14); else if (y > innerHeight - 70) window.scrollBy(0, 14);
+}
+function endDrag(){
+  if (!D) return;
+  clearTimeout(D.timer);
+  if (D.ghost) D.ghost.remove();
+  if (D.target) D.target.classList.remove('drop-hover', 'drop-no');
+  D.el.classList.remove('dragging-src', 'pressing');
+  document.body.classList.remove('is-dragging');
+  document.querySelectorAll('.can-drop').forEach(s => s.classList.remove('can-drop'));
+  D = null;
+}
+
+/* ---------- 8. 一鍵安排 ---------- */
+function arrange(b, { mode = 'no', teacherFront = true, priority = true, scope = 'all' } = {}, people = S.people){
+  const order = fillOrder(b.layout);
+  const lockedSeats = Object.keys(b.locked).filter(s => b.seats[s]);
+  const keep = new Set(lockedSeats.map(s => b.seats[s]));
+  if (scope === 'all') for (const s of Object.keys(b.seats)) if (!b.locked[s]) delete b.seats[s];
+  const placed = new Set(Object.values(b.seats));
+  const pool = people.filter(p => p.bus === b.id && !keep.has(p.id) && !placed.has(p.id));
+  const teachers = pool.filter(p => p.g === 'T').sort(byNo);
+  const stu = pool.filter(p => p.g !== 'T').sort(byNo);
+  const M = stu.filter(p => p.g === 'M'), F = stu.filter(p => p.g === 'F'), U = stu.filter(p => p.g !== 'M' && p.g !== 'F');
+  const priFirst = arr => priority ? [...arr.filter(isPri), ...arr.filter(p => !isPri(p))] : arr;
+  let seq, seqUnits = [];
+  if (mode === 'random') seq = priFirst(shuffle(stu));
+  else if (mode === 'alt'){
+    const m = priFirst(M), f = priFirst(F); seq = [];
+    while (m.length || f.length){ if (m.length) seq.push(m.shift()); if (f.length) seq.push(f.shift()); }
+    seq.push(...priFirst(U));
+  } else if (mode === 'pair'){
+    // 兩人一組（同性別），男生組、女生組交錯；有暈車／前排需求的組排前面
+    const pairsOf = arr => { const out = []; for (let i = 0; i < arr.length; i += 2) out.push(arr.slice(i, i + 2)); return out; };
+    const mp = pairsOf(priFirst(M)), fp = pairsOf(priFirst(F)), up = pairsOf(priFirst(U));
+    const full = [], singles = [];
+    while (mp.length || fp.length){ for (const q of [mp, fp]) if (q.length){ const pr = q.shift(); (pr.length === 2 ? full : singles).push(pr); } }
+    let all = [...full, ...up, ...singles];
+    if (priority) all = [...all.filter(pr => pr.some(isPri)), ...all.filter(pr => !pr.some(isPri))];
+    seq = all.flat(); seqUnits = all;
+  } else seq = priFirst(stu);
+  if (mode === 'pair') return placeByGroups(b, teacherFront ? [teachers, seqUnits] : [seqUnits, teachers]);
+  const queue = teacherFront ? [...teachers, ...seq] : [...seq, ...teachers];
+  let i = 0, left = 0;
+  for (const p of queue){
+    while (i < order.length && b.seats[order[i]]) i++;
+    if (i < order.length) b.seats[order[i++]] = p.id; else left++;
+  }
+  return left;
+}
+
+// 同性兩人同坐：以「兩人座」為一組來放，確保同一組的兩人真的坐在一起
+function seatGroups(key){
+  return (LAYOUTS[key] || LAYOUTS[DEFAULT_LAYOUT]).rows.flatMap(r => {
+    const c = r.cells.filter(isSeat);
+    if (r.type === 'last') return [c.slice(0, 2), c.slice(2, 4), c.slice(4)].filter(g => g.length);
+    return [c.slice(0, 2), c.slice(2, 4)].filter(g => g.length);
+  });
+}
+function placeByGroups(b, parts){
+  const rs = reserveSet(b.layout);
+  const all = seatGroups(b.layout), order = fillOrder(b.layout);
+  const groups = [...all.filter(g => !g.some(x => rs.has(x))), ...all.filter(g => g.some(x => rs.has(x)))];
+  let left = 0;
+  const firstFree = () => order.find(s => !b.seats[s]);
+  const putUnit = unit => {
+    const g = groups.find(g => g.filter(s => !b.seats[s]).length >= unit.length && (unit.length === 2 ? g.every(s => !b.seats[s]) : true));
+    unit.forEach((p, k) => { const s = g ? g.filter(x => !b.seats[x])[0] : firstFree(); if (s) b.seats[s] = p.id; else left++; });
+  };
+  parts.forEach(part => {
+    if (!part.length) return;
+    const units = Array.isArray(part[0]) ? part : (() => { const u = []; for (let i = 0; i < part.length; i += 2) u.push(part.slice(i, i + 2)); return u; })();
+    units.forEach(putUnit);
+  });
+  return left;
+}
+
+/* ---------- 9. 匯入名單 ---------- */
+const isGender = c => /^(男|女|男生|女生|m|f|boy|girl|男性|女性)$/i.test(c);
+const normG = c => /^(男|男生|男性|m|boy)$/i.test(c) ? 'M' : /^(女|女生|女性|f|girl)$/i.test(c) ? 'F' : /老師|教師/.test(c) ? 'T' : '';
+function splitText(t){
+  return t.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean)
+    .map(l => (l.includes('\t') ? l.split('\t') : l.includes(',') ? l.split(',') : l.split(/\s+/)).map(c => c.replace(/^"|"$/g, '').trim()));
+}
+function parseRows(rows){
+  rows = rows.filter(r => r.some(Boolean));
+  let map = null;
+  const hi = rows.findIndex(r => r.some(c => /姓名|名字/.test(c)));
+  if (hi >= 0 && hi < 5){
+    const hr = rows[hi], f = re => hr.findIndex(c => re.test(c));
+    map = { no:f(/座號|號碼|^號$|編號/), name:f(/姓名|名字/), g:f(/性別/), note:f(/備註|註記|說明|特殊/), cls:f(/班級|^班$/) };
+    rows = rows.slice(hi + 1);
+  }
+  const out = [];
+  for (const r of rows){
+    let no = '', name = '', g = '', note = '', cls = '';
+    const at = i => (i >= 0 ? (r[i] || '') : '');
+    if (map){ no = at(map.no); name = at(map.name); g = at(map.g); note = at(map.note); cls = at(map.cls); }
+    else {
+      const cells = r.filter(Boolean);
+      const gi = cells.findIndex(isGender); if (gi >= 0){ g = cells[gi]; cells.splice(gi, 1); }
+      if (/^\d{1,3}$/.test(cells[0] || '')) no = cells.shift();
+      name = cells.shift() || ''; note = cells.join(' ');
+    }
+    name = String(name).trim().slice(0, 20);
+    if (!name || /^(姓名|名字)$/.test(name)) continue;
+    out.push({ no:String(no).replace(/\D/g, '').slice(0, 3), name, g:normG(String(g).trim()), note:String(note).trim().slice(0, 30), cls:String(cls).trim().slice(0, 20) });
+  }
+  return out;
+}
+let impList = [];
+function updateImpPreview(){
+  impList = parseRows(splitText($('#impText').value));
+  const box = $('#impPreview'); box.replaceChildren();
+  $('#impGo').disabled = !impList.length;
+  $('#impGo').textContent = impList.length ? `匯入 ${impList.length} 人` : '匯入名單';
+  if (!impList.length) return;
+  const m = impList.filter(p => p.g === 'M').length, f = impList.filter(p => p.g === 'F').length;
+  box.append(h('div', { class:'imp-sum' }, `讀到 ${impList.length} 人`, h('span', { class:'chip', text:`男 ${m}` }), h('span', { class:'chip', text:`女 ${f}` }),
+    impList.length - m - f ? h('span', { class:'chip', text:`未填性別 ${impList.length - m - f}` }) : null));
+  const warn = [];
+  const nos = impList.filter(p => p.no).map(p => (p.cls || '') + '#' + p.no);
+  const dup = [...new Set(nos.filter((x, i) => nos.indexOf(x) !== i))].map(x => x.split('#')[1]);
+  if (dup.length) warn.push(`座號重複：${dup.join('、')}`);
+  const cap = seatOrder(($('#impBus').value && S.buses.find(b => b.id === $('#impBus').value) || bus()).layout).length;
+  if (impList.length > cap) warn.push(`人數超過一台車的 ${cap} 個座位，多的人可以之後移到別台車`);
+  if (warn.length) box.append(h('div', { class:'imp-warn', text:'請確認：' + warn.join('；') }));
+  const minis = h('div', { class:'minis' });
+  impList.slice(0, 60).forEach(p => minis.append(h('span', { class:`mini g-${p.g || 'U'}` }, h('span', { class:'av', svg:AV[p.g || 'U'] }), [p.no, p.name].filter(Boolean).join(' '))));
+  box.append(minis);
+}
+async function readFileText(f){
+  const name = f.name.toLowerCase();
+  if (/\.(xlsx|xls)$/.test(name)){
+    if (!window.XLSX) throw new Error('Excel 元件沒有載入，請確認網路，或改用複製貼上');
+    const wb = XLSX.read(await f.arrayBuffer(), { type:'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false }).map(r => r.join('\t')).join('\n');
+  }
+  const buf = await f.arrayBuffer();
+  let t = new TextDecoder('utf-8').decode(buf);
+  if (t.includes('\uFFFD')){ try { t = new TextDecoder('big5').decode(buf); } catch(e){} } // 台灣 Excel 存的 CSV 常是 Big5
+  return t.replace(/^﻿/, '');
+}
+function doImport(){
+  if (!impList.length) return;
+  const mode = document.querySelector('input[name="impMode"]:checked').value;
+  const cls = $('#impCls').value.trim();
+  let busId = $('#impBus').value;
+  commit(() => {
+    if (S.sample){ const keepAct = { name:'', date:'', place:'' }; S = blank(); S.act = keepAct; busId = S.buses[0].id; }
+    const b = S.buses.find(x => x.id === busId) || S.buses[0];
+    if (mode === 'replace'){
+      const rm = new Set(S.people.filter(p => p.bus === b.id && p.g !== 'T').map(p => p.id));
+      S.people = S.people.filter(p => !rm.has(p.id));
+    }
+    impList.forEach(r => S.people.push({ id:uid(), bus:b.id, no:r.no, name:r.name, g:r.g, note:r.note, cls:r.cls || cls }));
+    if (cls && !b.cls) b.cls = cls;
+    S.cur = b.id;
+  }, { popNew:true });
+  $('#dlgImport').close();
+  toast(`已匯入 ${impList.length} 人，按「一鍵安排」就能排好座位`);
+}
+
+/* ---------- 10. 列印 ---------- */
+function buildPage(b, o){
+  const L = LAYOUTS[b.layout]; let n = 0;
+  const ps = peopleOf(b);
+  const multiCls = new Set(ps.map(p => p.cls).filter(Boolean)).size > 1;
+  const pg = h('div', { class:`page ${o.color ? 'color' : 'mono'}` });
+  pg.append(h('div', { class:'pg-head' },
+    h('div', {}, h('div', { class:'pg-school', text:'高雄市楠梓國小' }), h('div', { class:'pg-title', text:S.act.name || '校外教學' })),
+    h('div', { class:'pg-busno', text:b.title || '' })));
+  const blank = '＿＿＿＿＿＿';
+  const meta = [['日期', fmtDate(S.act.date)], ['班級', b.cls], ['車牌', b.plate], ['集合地點', S.act.place], ['隨車老師', b.teacher], ['司機', [b.driver, b.phone].filter(Boolean).join(' ')]];
+  pg.append(h('div', { class:'pg-meta' }, meta.map(([k, v]) => h('div', {}, h('b', { text:k }), v || blank))));
+  pg.append(h('div', { class:'pg-dir', text:'▲ 車頭（前）▲' }));
+  const box = h('div', { class:'pg-bus' });
+  box.append(h('div', { class:'pg-front' },
+    h('div', { style:'grid-column:1/span 2' }, h('span', { svg:ICON.wheel, style:'display:flex' }), '司機'),
+    h('div', { style:'grid-column:4/span 2' }, '車門')));
+  const rs = reserveSet(b.layout);
+  const pgSeat = c => {
+    n++; const p = person(b.seats[c]);
+    const cell = h('div', { class:`pg-seat ${p ? (p.g || 'U') : 'empty'}` }, h('span', { class:'pg-sno', text:n }));
+    if (!p && rs.has(c)) cell.append(h('span', { class:'pg-rsv', text:'（保留）' }));
+    if (p){
+      if (o.roll) cell.append(h('span', { class:'pg-chk', text:'去□ 回□' }));
+      cell.append(h('div', { class:'pg-who' }, h('span', { class:'av', svg:AV[p.g || 'U'] }),
+        h('div', { class:'pg-txt' },
+          h('div', { class:'pg-no' }, [multiCls && p.cls ? p.cls + ' ' : '', noLabel(p)].join(''), h('span', { class:'pg-g', text:p.g === 'M' ? '・男' : p.g === 'F' ? '・女' : '' })),
+          h('div', { class:'pg-name', text:p.name }))));
+      if (p.note) cell.append(h('div', { class:'pg-note', text:'※' + p.note }));
+    }
+    return cell;
+  };
+  const stdN = L.rows.filter(r => r.type === 'std').length;
+  const grid = buildGrid(L, 'pg-grid', (c, r) => {
+    if (c === null) return h('div', { class:'pg-aisle' }, h('span', { text:`左${r.rl}` }), r.rr ? h('span', { text:`右${r.rr}` }) : null);
+    if (!isSeat(c)) return h('div', { class:c === '#EXIT' ? 'pg-exit' : 'pg-step', text:SPECIAL[c] });
+    return pgSeat(c);
+  });
+  grid.style.gridTemplateRows = `repeat(${stdN}, minmax(0, 1fr))`; grid.style.flex = String(stdN);
+  box.append(grid);
+  L.rows.filter(r => r.type === 'last').forEach(r => box.append(h('div', { class:'pg-row last' }, r.cells.map(pgSeat))));
+  pg.append(box);
+  pg.append(h('div', { class:'pg-dir', text:'▼ 車尾（後）▼' }));
+  const cnt = g => ps.filter(p => (p.g || 'U') === g && seatOf(b, p.id)).length;
+  const seated = Object.keys(b.seats).length, cap = seatOrder(b.layout).length;
+  pg.append(h('div', { class:'pg-foot' },
+    h('div', { class:'pg-legend' },
+      h('span', {}, h('span', { class:'av', svg:AV.M }), `男生 ${cnt('M')} 人`),
+      h('span', {}, h('span', { class:'av', svg:AV.F }), `女生 ${cnt('F')} 人`),
+      h('span', {}, h('span', { class:'av', svg:AV.T }), `老師 ${cnt('T')} 人`),
+      cnt('U') ? h('span', {}, h('span', { class:'av', svg:AV.U }), `其他 ${cnt('U')} 人`) : null,
+      h('span', {}, `共 ${seated} 人｜空位 ${cap - seated}`)),
+    h('div', { class:'pg-sign' },
+      h('span', { text:'去程點名：實到＿＿＿人' }), h('span', { text:'回程點名：實到＿＿＿人' }), h('span', { text:'隨車老師簽名：＿＿＿＿＿＿＿' }))));
+  return pg;
+}
+function printOpts(){
+  return { range:document.querySelector('input[name="prRange"]:checked').value, color:document.querySelector('input[name="prColor"]:checked').value === 'color', roll:$('#prRoll').checked };
+}
+function printBuses(o){ return o.range === 'all' ? S.buses : [bus()]; }
+function renderPreview(){
+  const o = printOpts(), box = $('#pvBox'); box.replaceChildren();
+  const avail = Math.min(box.clientWidth - 32, 560) || 520;
+  printBuses(o).forEach(b => {
+    const pg = buildPage(b, o);
+    const holder = h('div', { class:'pv-holder' }, pg);
+    box.append(holder);
+    const w = pg.offsetWidth, hh = pg.offsetHeight, sc = avail / w;
+    pg.style.transform = `scale(${sc})`;
+    holder.style.width = w * sc + 'px'; holder.style.height = hh * sc + 'px';
+  });
+}
+function doPrint(){
+  const o = printOpts(), area = $('#printArea'); area.replaceChildren(...printBuses(o).map(b => buildPage(b, o)));
+  try { window.print(); } catch(e){ toast('這個視窗不能列印，請用 Chrome 開啟 HTML 檔', 'warn'); }
+}
+
+// 下載成圖片：每台車一張 PNG（A4 比例、高解析度，可以貼到 LINE 或簡報）
+async function downloadImages(){
+  if (!window.html2canvas) return toast('圖片元件沒有載入，請確認網路連線', 'warn');
+  const o = printOpts(), btn = $('#imgGo'), list = printBuses(o);
+  btn.disabled = true; const old = btn.textContent;
+  const stage = h('div', { style:'position:fixed;left:-10000px;top:0;background:#fff;padding:0' });
+  document.body.append(stage);
+  try {
+    for (let i = 0; i < list.length; i++){
+      btn.textContent = `製作中 ${i + 1}/${list.length}…`;
+      const pg = buildPage(list[i], o); pg.style.padding = '8mm'; pg.style.width = '206mm'; pg.style.height = '293mm';
+      stage.replaceChildren(pg);
+      const cv = await html2canvas(pg, { scale:2.5, backgroundColor:'#ffffff', logging:false });
+      if (!o.color){ // 黑白：轉成灰階
+        const ctx = cv.getContext('2d'), img = ctx.getImageData(0, 0, cv.width, cv.height), d = img.data;
+        for (let k = 0; k < d.length; k += 4){ const y = d[k] * .299 + d[k + 1] * .587 + d[k + 2] * .114; d[k] = d[k + 1] = d[k + 2] = y; }
+        ctx.putImageData(img, 0, 0);
+      }
+      const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      download(blob, `${fileBase()}_${(list[i].title || '座位表').replace(/[\\/:*?"<>|]/g, '_')}.png`);
+      await new Promise(r => setTimeout(r, 400));
+    }
+    toast(window.self === window.top ? `已下載 ${list.length} 張圖片，在「下載」資料夾` : '預覽視窗不能下載，請用 HTML 檔開啟', window.self === window.top ? 'ok' : 'warn');
+  } catch(err){ toast('圖片製作失敗，請改用列印另存 PDF', 'warn'); }
+  finally { stage.remove(); btn.disabled = false; btn.textContent = old; }
+}
+
+/* ---------- 11. 存檔、匯出 ---------- */
+const fileBase = () => (S.act.name || '遊覽車座位表').replace(/[\\/:*?"<>|]/g, '_');
+function download(blob, name){
+  const a = h('a', { href:URL.createObjectURL(blob), download:name }); document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function saveJson(){ download(new Blob([JSON.stringify(S, null, 1)], { type:'application/json' }), `${fileBase()}_座位表存檔.json`); toast('已下載存檔，請放到雲端資料夾保存'); }
+function exportXlsx(){
+  if (!window.XLSX) return toast('Excel 元件沒有載入，請確認網路連線', 'warn');
+  const wb = XLSX.utils.book_new(), used = new Set();
+  S.buses.forEach(b => {
+    const rows = [[S.act.name || '遊覽車座位表', '', b.title, b.cls], [], ['座位', '座號', '姓名', '性別', '班級', '備註']];
+    seatOrder(b.layout).forEach((sid, i) => { const p = person(b.seats[sid]); rows.push([i + 1, p ? (p.g === 'T' ? '老師' : p.no) : '', p ? p.name : '（空位）', p ? G_NAME[p.g || 'U'] : '', p ? p.cls : '', p ? p.note : '']); });
+    unassigned(b).forEach(p => rows.push(['未安排', p.no, p.name, G_NAME[p.g || 'U'], p.cls, p.note]));
+    const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{ wch:8 }, { wch:6 }, { wch:12 }, { wch:6 }, { wch:12 }, { wch:20 }];
+    let nm = (b.title || '車').replace(/[\[\]:*?\/\\]/g, '').slice(0, 28) || '車'; while (used.has(nm)) nm += '_'; used.add(nm);
+    XLSX.utils.book_append_sheet(wb, ws, nm);
+  });
+  XLSX.writeFile(wb, `${fileBase()}_座位名單.xlsx`);
+  toast('已匯出 Excel 座位名單');
+}
+
+/* ---------- 12. 範例資料 ---------- */
+function sampleState(){
+  const st = blank(); st.sample = true;
+  st.act = { name:'三年級校外教學－科工館', date:'2026-11-20', place:'學校前門' };
+  const b = st.buses[0]; Object.assign(b, { cls:'三年1班', teacher:'王老師', plate:'KAA-1234', driver:'李先生', phone:'0912-345-678' });
+  const boys = ['陳柏宇','黃冠廷','李承恩','吳宥辰','蔡宇翔','許家豪','謝昀澤','洪睿恩','邱品睿','賴柏翰','徐宥廷','葉承翰','呂冠宇','何彥廷','高子翔'];
+  const girls = ['林品妍','張語彤','王子晴','劉芯妤','楊詠晴','鄭雨潔','郭欣妤','曾苡安','廖思妤','周芷涵','蘇宜蓁','莊詩涵','江沛恩','羅于晴'];
+  const notes = { 4:'會暈車', 19:'會暈車', 22:'坐前排' };
+  st.people.push({ id:uid(), bus:b.id, no:'', name:'王老師', g:'T', note:'', cls:'三年1班' });
+  boys.forEach((n, i) => st.people.push({ id:uid(), bus:b.id, no:String(i + 1), name:n, g:'M', note:notes[i + 1] || '', cls:'三年1班' }));
+  girls.forEach((n, i) => st.people.push({ id:uid(), bus:b.id, no:String(i + 16), name:n, g:'F', note:notes[i + 16] || '', cls:'三年1班' }));
+  arrange(b, { mode:'pair' }, st.people);
+  // 留三位在「尚未安排」，示範拖拉
+  const order = seatOrder(b.layout).filter(s => b.seats[s]);
+  order.slice(-3).forEach(s => delete b.seats[s]);
+  b.locked[order[0]] = true; // 老師座位鎖定示範
+  const b2 = newBus(2); b2.cls = '三年2班'; st.buses.push(b2);
+  return st;
+}
+
+/* ---------- 13. 對話框 ---------- */
+let confirmFn = null;
+function ask(title, msg, okText, fn){
+  $('#cfTitle').textContent = title; $('#cfMsg').textContent = msg; $('#cfOk').textContent = okText; confirmFn = fn; $('#dlgConfirm').showModal();
+}
+$('#cfOk').addEventListener('click', () => { $('#dlgConfirm').close(); const f = confirmFn; confirmFn = null; if (f) f(); });
+document.querySelectorAll('dialog').forEach(d => {
+  d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-close]')) d.close(); });
+});
+function busOptions(sel, cur){ sel.replaceChildren(...S.buses.map(b => h('option', { value:b.id, text:`${b.title}${b.cls ? '（' + b.cls + '）' : ''}` }))); sel.value = cur; }
+
+function openImport(){
+  busOptions($('#impBus'), S.cur);
+  $('#impCls').value = S.sample ? '' : (bus().cls || '');
+  $('#impText').value = ''; $('#impFile').value = '';
+  updateImpPreview(); $('#dlgImport').showModal(); $('#impText').focus();
+}
+function openAuto(){
+  const b = bus();
+  if (!peopleOf(b).length) return toast(`${b.title} 還沒有乘客，請先匯入名單`, 'warn');
+  $('#dlgAuto').showModal();
+}
+let editBusId = null;
+function openBus(){
+  const b = bus(); editBusId = b.id;
+  $('#busTitle').value = b.title; $('#busCls').value = b.cls; $('#busTeacher').value = b.teacher; $('#busPlate').value = b.plate;
+  $('#busDriver').value = b.driver; $('#busPhone').value = b.phone;
+  $('#busLayout').replaceChildren(...Object.entries(LAYOUTS).map(([k, v]) => h('option', { value:k, text:v.name }))); $('#busLayout').value = b.layout;
+  $('#busDel').hidden = S.buses.length < 2;
+  $('#dlgBus').showModal();
+}
+let editPid = null;
+function openPerson(pid){
+  editPid = pid || null; const p = pid ? person(pid) : null;
+  $('#pTitle').textContent = p ? '編輯資料' : '新增學生或老師';
+  const g = p ? (p.g || 'U') : 'M';
+  $('#pG').replaceChildren(...[['M','男生'],['F','女生'],['T','老師'],['U','未填']].map(([k, t]) =>
+    h('label', {}, h('input', { type:'radio', name:'pG', value:k, checked:k === g }), h('span', { class:'av', svg:AV[k] }), t)));
+  $('#pNo').value = p ? p.no : ''; $('#pName').value = p ? p.name : ''; $('#pCls').value = p ? p.cls : (bus().cls || '');
+  $('#pNote').value = p ? p.note : ''; busOptions($('#pBus'), p ? p.bus : S.cur);
+  $('#pDel').hidden = !p; $('#pErr').hidden = true;
+  $('#dlgPerson').showModal(); $('#pName').focus();
+}
+function openPrint(){
+  $('#prNote').hidden = window.self === window.top;
+  $('#prAllCnt').textContent = `共 ${S.buses.length} 台，${S.buses.length} 張 A4`;
+  $('#dlgPrint').showModal(); requestAnimationFrame(renderPreview);
+}
+
+/* ---------- 14. 事件 ---------- */
+const actions = {
+  import:openImport, auto:openAuto, print:openPrint, editBus:openBus,
+  addPerson:() => openPerson(null),
+  roll(){ ui.roll = !ui.roll; ui.sel = null; render({ noFlip:true }); toast(ui.roll ? '點名模式：學生上車就點他的座位' : '已結束點名模式'); },
+  clearRoll(){ commit(() => { bus().checked = {}; }, { noFlip:true }); },
+  undo, redo,
+  addBus(){ commit(() => { const b = newBus(S.buses.length + 1); S.buses.push(b); S.cur = b.id; S.sample = false; }, { noFlip:true }); toast(`已新增 ${bus().title}`); },
+  exportXlsx, saveJson,
+  openJson(){ $('#fileJson').click(); },
+  sample(){ ask('載入範例資料', '目前的資料會被範例取代（可以按「復原」找回）。要繼續嗎？', '載入範例', () => commit(() => { S = sampleState(); }, { noFlip:true })); },
+  clearAll(){ ask('全部清空', '所有車輛、名單和座位都會清除（可以按「復原」找回）。建議先「下載存檔」。要清空嗎？', '全部清空', () => { commit(() => { S = blank(); }, { noFlip:true }); toast('已清空，可以開始匯入名單'); }); },
+  clearSample(){ commit(() => { S = blank(); }, { noFlip:true }); toast('範例已清空，請匯入名單'); },
+  editSel(){ const id = ui.sel; ui.sel = null; renderSel(); openPerson(id); },
+  unseatSel(){ const id = ui.sel; ui.sel = null; unseat(id); },
+  lockSel(){ const sid = seatOf(bus(), ui.sel); ui.sel = null; if (sid) toggleLock(sid); },
+  cancelSel(){ ui.sel = null; render({ noFlip:true }); },
+};
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]');
+  if (a){ const m = $('#menu'); if (m.open && m.contains(a)) m.open = false; actions[a.dataset.act] && actions[a.dataset.act](); return; }
+  const tab = e.target.closest('[data-bus]');
+  if (tab){ S.cur = tab.dataset.bus; ui.sel = null; persist(); render({ noFlip:true }); return; }
+  const lock = e.target.closest('[data-lock]');
+  if (lock){ toggleLock(lock.dataset.lock); return; }
+  if (!$('#menu').contains(e.target)) $('#menu').open = false;
+  if (e.target.closest('.pcard')) return;            // 卡片的點擊由 pointerup 處理
+  if (ui.roll || !ui.sel) return;
+  const seat = e.target.closest('#bus [data-seat]');
+  if (seat){ const s = ui.sel; ui.sel = null; placeAt(s, seat.dataset.seat); return; }
+  if (e.target.closest('#tray')){ const s = ui.sel; ui.sel = null; unseat(s); }
+});
+document.addEventListener('keydown', e => {
+  if (document.querySelector('dialog[open]')) return;
+  const inField = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if ((e.ctrlKey || e.metaKey) && !inField && e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && !inField && e.key.toLowerCase() === 'y'){ e.preventDefault(); redo(); return; }
+  if (e.key === 'Escape' && ui.sel){ ui.sel = null; render({ noFlip:true }); return; }
+  if ((e.key === 'Enter' || e.key === ' ') && !inField){
+    const c = document.activeElement.closest && document.activeElement.closest('.pcard[data-pid]');
+    if (c){ e.preventDefault(); tapCard(c.dataset.pid); return; }
+    const s = document.activeElement.closest && document.activeElement.closest('#bus [data-seat]');
+    if (s && ui.sel){ e.preventDefault(); const p = ui.sel; ui.sel = null; placeAt(p, s.dataset.seat); }
+  }
+});
+// 活動資料：打字就自動儲存
+[['#actName', 'name'], ['#actDate', 'date'], ['#actPlace', 'place']].forEach(([id, k]) => {
+  $(id).addEventListener('input', e => { S.act[k] = e.target.value.slice(0, 40); persist(); });
+  $(id).addEventListener('change', () => { if (S.sample){ S.sample = false; persist(); render({ noFlip:true }); } });
+});
+// 匯入
+$('#impText').addEventListener('input', updateImpPreview);
+$('#impBus').addEventListener('change', updateImpPreview);
+$('#impFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { $('#impText').value = await readFileText(f); updateImpPreview(); toast(`已讀取「${f.name}」`); }
+  catch(err){ toast(err.message || '檔案讀取失敗，請改用複製貼上', 'warn'); }
+});
+$('#impGo').addEventListener('click', doImport);
+// 一鍵安排
+$('#autoGo').addEventListener('click', () => {
+  const o = { mode:document.querySelector('input[name="autoMode"]:checked').value, teacherFront:$('#autoTeacher').checked,
+              priority:$('#autoPri').checked, scope:document.querySelector('input[name="autoScope"]:checked').value };
+  const g = peopleOf(bus()).filter(p => p.g !== 'T');
+  if ((o.mode === 'pair' || o.mode === 'alt') && g.length && g.every(p => !p.g || p.g === 'U')) toast('名單沒有性別資料，會依座號排', 'warn');
+  let left = 0; $('#dlgAuto').close();
+  commit(() => { left = arrange(bus(), o); }, { stagger:true });
+  if (left) toast(`還有 ${left} 人坐不下，請「新增車輛」再把人移過去`, 'warn'); else toast('座位安排好了！可以再拖拉微調');
+});
+// 車輛資料
+$('#busSave').addEventListener('click', () => {
+  const b = S.buses.find(x => x.id === editBusId); if (!b) return $('#dlgBus').close();
+  const v = id => $(id).value.trim();
+  if (!v('#busTitle')){ shake($('#busTitle')); $('#busTitle').focus(); return; }
+  let moved = 0;
+  commit(() => {
+    Object.assign(b, { title:v('#busTitle'), cls:v('#busCls'), teacher:v('#busTeacher'), plate:v('#busPlate'), driver:v('#busDriver'), phone:v('#busPhone') });
+    const nl = $('#busLayout').value;
+    if (nl !== b.layout){ const ok = new Set(seatOrder(nl)); for (const s of Object.keys(b.seats)) if (!ok.has(s)){ delete b.seats[s]; delete b.locked[s]; moved++; } b.layout = nl; }
+    S.sample = false;
+  }, { noFlip:true });
+  $('#dlgBus').close();
+  toast(moved ? `已儲存，換車型後有 ${moved} 人移回未安排` : '車輛資料已儲存');
+});
+$('#busDel').addEventListener('click', () => {
+  const b = S.buses.find(x => x.id === editBusId); if (!b) return;
+  const n = peopleOf(b).length; $('#dlgBus').close();
+  ask(`刪除「${b.title}」`, n ? `這台車的 ${n} 位乘客也會一起刪除（可以按「復原」找回）。確定要刪除嗎？` : '確定要刪除這台車嗎？', '刪除', () => {
+    commit(() => { S.people = S.people.filter(p => p.bus !== b.id); S.buses = S.buses.filter(x => x.id !== b.id); S.cur = S.buses[0].id; }, { noFlip:true });
+    toast('已刪除');
+  });
+});
+// 學生／老師資料
+$('#pSave').addEventListener('click', () => {
+  const name = $('#pName').value.trim();
+  if (!name){ $('#pErr').hidden = false; shake($('#pName')); $('#pName').focus(); return; }
+  const data = { no:$('#pNo').value.replace(/\D/g, '').slice(0, 3), name:name.slice(0, 20), g:(document.querySelector('input[name="pG"]:checked') || {}).value || 'U',
+                 cls:$('#pCls').value.trim().slice(0, 20), note:$('#pNote').value.trim().slice(0, 30), bus:$('#pBus').value };
+  if (data.g === 'U') data.g = '';
+  if (data.g === 'T') data.no = '';
+  commit(() => {
+    if (editPid){
+      const p = person(editPid);
+      if (p.bus !== data.bus){ const ob = S.buses.find(b => b.id === p.bus); const s = ob && seatOf(ob, p.id); if (s){ delete ob.seats[s]; delete ob.locked[s]; } }
+      Object.assign(p, data);
+    } else S.people.push({ id:uid(), ...data });
+    S.sample = false;
+  }, { popNew:true });
+  $('#dlgPerson').close(); toast(editPid ? '已儲存' : `已新增 ${data.name}`);
+});
+$('#pDel').addEventListener('click', () => {
+  const p = person(editPid); if (!p) return; $('#dlgPerson').close();
+  ask('刪除', `確定要刪除「${fullLabel(p)}」嗎？`, '刪除', () => { commit(() => { S.people = S.people.filter(x => x.id !== p.id); }); toast('已刪除'); });
+});
+// 列印
+document.querySelectorAll('input[name="prRange"],input[name="prColor"],#prRoll').forEach(i => i.addEventListener('change', renderPreview));
+$('#prGo').addEventListener('click', doPrint);
+$('#imgGo').addEventListener('click', downloadImages);
+// 開啟存檔
+$('#fileJson').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!valid(d)) throw new Error();
+    commit(() => { S = d; S.sample = false; }, { noFlip:true }); toast(`已開啟「${f.name}」`);
+  } catch(err){ toast('這不是座位表的存檔，請選擇「…座位表存檔.json」', 'warn'); }
+  e.target.value = '';
+});
+addEventListener('resize', () => { if ($('#dlgPrint').open) renderPreview(); });
+
+S = load() || sampleState();
+render({ noFlip:true });
+})();
+</script>
+
+</html>
