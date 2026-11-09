@@ -621,6 +621,8 @@ code{background:var(--sun-soft);border-radius:6px;padding:0 5px;font-size:.95em}
       <p class="hint">照遊覽車公司給的座位圖填寫（車頭朝上看）。改數字下面就會算出總座位數。</p>
       <div class="cgrid">
         <label class="field">左邊幾排<input id="cLeft" class="inp" type="number" min="1" max="15" inputmode="numeric"></label>
+        <label class="field">左邊每排<select id="cLw" class="inp"><option value="2">2 人（兩人座）</option><option value="1">1 人（單人座）</option></select></label>
+        <label class="field">右邊每排<select id="cRw" class="inp"><option value="2">2 人（兩人座）</option><option value="1">1 人（單人座）</option></select></label>
         <label class="field">右邊幾排<input id="cRight" class="inp" type="number" min="0" max="15" inputmode="numeric"></label>
         <label class="field">右邊從左邊第幾排開始<input id="cStart" class="inp" type="number" min="1" max="6" inputmode="numeric"></label>
         <label class="field">後門在右邊第幾排後面（沒有填 0）<input id="cDoor" class="inp" type="number" min="0" max="14" inputmode="numeric"></label>
@@ -723,40 +725,42 @@ code{background:var(--sun-soft);border-radius:6px;padding:0 5px;font-size:.95em}
 //  left：左邊幾排　rightStart：右邊第 1 排對齊左邊第幾排（前面是前門上下車區）
 //  right：右邊幾排座位　doorAfter：後門在右邊第幾排後面（0＝沒有後門）
 //  back：最後一排幾個座位（0＝沒有）　reserve：左邊前幾排「盡量不坐」
+//  lw / rw：左邊、右邊每排幾個座位（2＝兩人座；1＝單人寬座椅，例如 2+1 豪華車）
 function buildLayout(o){
+  const lw = o.lw || 2, rw = o.rw || 2;
   const rows = []; const start = Math.max(1, o.rightStart);
   const rightCells = [];                       // 右邊每個位置：座位排號或 'door'
   for (let k = 1; k <= o.right; k++){ rightCells.push(k); if (o.doorAfter && k === o.doorAfter && k < o.right) rightCells.push('door'); }
   const total = Math.max(o.left, start - 1 + rightCells.length);
   for (let r = 1; r <= total; r++){
-    const leftPart = r <= o.left ? [`L${r}A`, `L${r}B`] : ['#NONE'];
+    const leftPart = r <= o.left ? (lw === 1 ? [`L${r}A`] : [`L${r}A`, `L${r}B`]) : ['#NONE'];
     let right, rLabel = '', span = 0;
     const idx = r - start;                     // 右邊第幾個位置（從 0 開始）
     if (r < start){ if (r === 1){ right = ['#STEP']; span = start - 1; } else right = ['#SKIP']; }
     else if (idx < rightCells.length){
       const c = rightCells[idx];
-      if (c === 'door') right = ['#EXIT']; else { right = [`R${c}C`, `R${c}D`]; rLabel = c; }
+      if (c === 'door') right = ['#EXIT']; else { right = rw === 1 ? [`R${c}C`] : [`R${c}C`, `R${c}D`]; rLabel = c; }
     } else right = ['#NONE'];
-    rows.push({ type:'std', rl: r <= o.left ? r : '', rr:rLabel, span, cells:[...leftPart, null, ...right] });
+    rows.push({ type:'std', rl: r <= o.left ? r : '', rr:rLabel, span, wideL: lw === 1, wideR: rw === 1, cells:[...leftPart, null, ...right] });
   }
   if (o.back > 0) rows.push({ type:'last', n:o.back, cells:Array.from({ length:o.back }, (_, i) => `B${i + 1}`) });
-  const reserve = []; for (let r = 1; r <= Math.min(o.reserve || 0, o.left); r++) reserve.push(`L${r}A`, `L${r}B`);
+  const reserve = []; for (let r = 1; r <= Math.min(o.reserve || 0, o.left); r++){ reserve.push(`L${r}A`); if (lw === 2) reserve.push(`L${r}B`); }
   return { rows, reserve };
 }
-const seatCount = o => o.left * 2 + o.right * 2 + (o.back || 0);
+const seatCount = o => o.left * (o.lw || 2) + o.right * (o.rw || 2) + (o.back || 0);
 // 常用車型（要新增常用車型，在這裡加一行）
 const PRESETS = {
   '43': { name:'43 人座大巴（左 11 排、右 8 排、右側後門、後排 5）', o:{ left:11, rightStart:3, right:8, doorAfter:5, back:5, reserve:2 } },
-  '36': { name:'36 人座（左 9 排、右 7 排、後排 4）',              o:{ left:9,  rightStart:3, right:7, doorAfter:0, back:4, reserve:2 } },
+  '36': { name:'36 人座 2+1 豪華車（左單人 12 排、右雙人 12 排）', o:{ left:12, lw:1, rightStart:1, right:12, rw:2, doorAfter:0, back:0, reserve:0 } },
   '45': { name:'45 人座大巴（左右各 10 排，沒有後門、後排 5）',    o:{ left:10, rightStart:1, right:10, doorAfter:0, back:5, reserve:0 } },
 };
 const LAYOUTS = {};
 for (const [k, v] of Object.entries(PRESETS)) LAYOUTS[k] = { name:v.name, o:v.o, ...buildLayout(v.o) };
 // 自訂車型：用參數組成一個代號，例如 c-11-3-8-5-5-2
-const customKey = o => `c-${o.left}-${o.rightStart}-${o.right}-${o.doorAfter}-${o.back}-${o.reserve}`;
+const customKey = o => `c-${o.left}x${o.lw || 2}-${o.rightStart}-${o.right}x${o.rw || 2}-${o.doorAfter}-${o.back}-${o.reserve}`;
 function ensureCustom(o){
   const k = customKey(o);
-  if (!LAYOUTS[k]) LAYOUTS[k] = { name:`自訂 ${seatCount(o)} 人座（左 ${o.left} 排、右 ${o.right} 排${o.doorAfter ? '、後門' : ''}、後排 ${o.back}）`, o, custom:true, ...buildLayout(o) };
+  if (!LAYOUTS[k]) LAYOUTS[k] = { name:`自訂 ${seatCount(o)} 人座（左 ${o.left} 排×${o.lw || 2}、右 ${o.right} 排×${o.rw || 2}${o.doorAfter ? '、後門' : ''}、後排 ${o.back}）`, o, custom:true, ...buildLayout(o) };
   return k;
 }
 const DEFAULT_LAYOUT = '43';
@@ -776,7 +780,8 @@ function buildGrid(L, cls, mk){
       if (c === '#SKIP'){ col += 2; return; }
       const el = mk(c, r);
       el.style.gridRow = r.span && c && !isSeat(c) ? `${i + 1} / span ${r.span}` : String(i + 1);
-      if (c && !isSeat(c)){ el.style.gridColumn = `${col} / span 2`; col += 2; } else { el.style.gridColumn = String(col); col++; }
+      const wide = c && isSeat(c) && ((r.wideL && col <= 2) || (r.wideR && col >= 4));   // 單人寬座椅佔兩格
+      if ((c && !isSeat(c)) || wide){ el.style.gridColumn = `${col} / span 2`; col += 2; } else { el.style.gridColumn = String(col); col++; }
       grid.append(el);
     });
   });
@@ -1184,9 +1189,9 @@ function arrange(b, { mode = 'no', teacherFront = true, priority = true, scope =
 // 同性兩人同坐：以「兩人座」為一組來放，確保同一組的兩人真的坐在一起
 function seatGroups(key){
   return (LAYOUTS[key] || LAYOUTS[DEFAULT_LAYOUT]).rows.flatMap(r => {
-    const c = r.cells.filter(isSeat);
-    if (r.type === 'last') return [c.slice(0, 2), c.slice(2, 4), c.slice(4)].filter(g => g.length);
-    return [c.slice(0, 2), c.slice(2, 4)].filter(g => g.length);
+    if (r.type === 'last'){ const c = r.cells.filter(isSeat); return [c.slice(0, 2), c.slice(2, 4), c.slice(4)].filter(g => g.length); }
+    const k = r.cells.indexOf(null);                  // 走道左右分開，左右兩邊各自成一組
+    return [r.cells.slice(0, k).filter(isSeat), r.cells.slice(k + 1).filter(isSeat)].filter(g => g.length);
   });
 }
 function placeByGroups(b, parts){
@@ -1483,15 +1488,15 @@ function openAuto(){
 }
 let editBusId = null;
 // 自訂車型：讀取／填入／即時計算總座位數
-const CF = { left:'#cLeft', right:'#cRight', rightStart:'#cStart', doorAfter:'#cDoor', back:'#cBack', reserve:'#cRes' };
-function fillCustom(o){ for (const [k, id] of Object.entries(CF)) $(id).value = o[k] ?? 0; updateCustomTotal(); }
+const CF = { left:'#cLeft', lw:'#cLw', right:'#cRight', rw:'#cRw', rightStart:'#cStart', doorAfter:'#cDoor', back:'#cBack', reserve:'#cRes' };
+function fillCustom(o){ for (const [k, id] of Object.entries(CF)) $(id).value = o[k] ?? ((k === 'lw' || k === 'rw') ? 2 : 0); updateCustomTotal(); }
 function readCustom(){
-  const o = {}; const lim = { left:[1,15], right:[0,15], rightStart:[1,6], doorAfter:[0,14], back:[0,6], reserve:[0,5] };
+  const o = {}; const lim = { left:[1,15], lw:[1,2], right:[0,15], rw:[1,2], rightStart:[1,6], doorAfter:[0,14], back:[0,6], reserve:[0,5] };
   for (const [k, id] of Object.entries(CF)){ const [a, z] = lim[k]; o[k] = Math.min(z, Math.max(a, parseInt($(id).value, 10) || 0)); }
   if (o.doorAfter >= o.right) o.doorAfter = 0;
   return o;
 }
-function updateCustomTotal(){ const o = readCustom(); $('#cTotal').textContent = `共 ${seatCount(o)} 個座位（左 ${o.left * 2}＋右 ${o.right * 2}＋後排 ${o.back}）`; }
+function updateCustomTotal(){ const o = readCustom(); $('#cTotal').textContent = `共 ${seatCount(o)} 個座位（左 ${o.left * o.lw}＋右 ${o.right * o.rw}＋後排 ${o.back}）`; }
 function openBus(){
   const b = bus(); editBusId = b.id;
   $('#busTitle').value = b.title; $('#busCls').value = b.cls; $('#busTeacher').value = b.teacher; $('#busPlate').value = b.plate;
@@ -1646,7 +1651,7 @@ $('#busLayout').addEventListener('change', () => {
   if (v === 'custom'){ box.hidden = false; updateCustomTotal(); }
   else { box.hidden = true; fillCustom(PRESETS[v].o); }   // 選了常用車型，自訂欄位也帶入它的數字，方便微調
 });
-Object.values(CF).forEach(id => $(id).addEventListener('input', updateCustomTotal));
+Object.values(CF).forEach(id => { $(id).addEventListener('input', updateCustomTotal); $(id).addEventListener('change', updateCustomTotal); });
 $('#busDel').addEventListener('click', () => {
   const b = S.buses.find(x => x.id === editBusId); if (!b) return;
   const n = peopleOf(b).length; $('#dlgBus').close();
