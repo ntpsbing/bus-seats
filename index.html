@@ -751,7 +751,7 @@ const seatCount = o => o.left * (o.lw || 2) + o.right * (o.rw || 2) + (o.back ||
 // 常用車型（要新增常用車型，在這裡加一行）
 const PRESETS = {
   '43': { name:'43 人座大巴（左 11 排、右 8 排、右側後門、後排 5）', o:{ left:11, rightStart:3, right:8, doorAfter:5, back:5, reserve:2 } },
-  '36': { name:'36 人座 2+1 豪華車（左單人 12 排、右雙人 12 排）', o:{ left:12, lw:1, rightStart:1, right:12, rw:2, doorAfter:0, back:0, reserve:0 } },
+  '34': { name:'34 人座 2+1 豪華車（左雙人 11 排、右單人 8 排、後排 4）', o:{ left:11, lw:2, rightStart:1, right:8, rw:1, doorAfter:0, back:4, reserve:0 } },
   '45': { name:'45 人座大巴（左右各 10 排，沒有後門、後排 5）',    o:{ left:10, rightStart:1, right:10, doorAfter:0, back:5, reserve:0 } },
 };
 const LAYOUTS = {};
@@ -843,6 +843,7 @@ function normalize(){
   const ids = new Set(S.people.map(p => p.id));
   for (const b of S.buses){
     b.seats ||= {}; b.locked ||= {}; b.checked ||= {};
+    if (b.layout === '36') b.layout = '34';          // 舊版的 36 人座代號改成 34 人座
     if (b.custom) b.layout = ensureCustom(b.custom);
     if (!LAYOUTS[b.layout]) b.layout = DEFAULT_LAYOUT;
     const okSeats = new Set(seatOrder(b.layout));
