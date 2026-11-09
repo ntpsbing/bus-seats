@@ -948,7 +948,8 @@ function renderTray(){
       h('span', { svg:document.querySelector('.logo').outerHTML }),
       h('p', { text:`${b.title} 還沒有乘客` }),
       h('button', { class:'btn btn-primary', 'data-act':'import' }, '匯入學生名單'),
-      h('button', { class:'btn', 'data-act':'addPerson' }, '手動輸入')));
+      h('button', { class:'btn', 'data-act':'addPerson' }, '手動輸入'),
+      h('button', { class:'btn btn-ghost', 'data-act':'sample', style:'min-height:44px;font-size:.9rem' }, '先看範例')));
   } else if (!list.length){
     box.append(h('div', { class:'tray-done', text:'全部都有座位了！' }));
   }
@@ -1560,7 +1561,7 @@ const actions = {
   addBus(){ commit(() => { const b = newBus(S.buses.length + 1); S.buses.push(b); S.cur = b.id; S.sample = false; }, { noFlip:true }); toast(`已新增 ${bus().title}，請選擇車型`); openBus(); },
   exportXlsx, saveJson, templateXlsx,
   openJson(){ $('#fileJson').click(); },
-  sample(){ ask('載入範例資料', '目前的資料會被範例取代（可以按「復原」找回）。要繼續嗎？', '載入範例', () => commit(() => { S = sampleState(); }, { noFlip:true })); },
+  sample(){ if (!S.people.length) return commit(() => { S = sampleState(); }, { noFlip:true }); ask('載入範例資料', '目前的資料會被範例取代（可以按「復原」找回）。要繼續嗎？', '載入範例', () => commit(() => { S = sampleState(); }, { noFlip:true })); },
   clearAll(){ ask('全部清空', '所有車輛、名單和座位都會清除（可以按「復原」找回）。建議先「下載存檔」。要清空嗎？', '全部清空', () => { commit(() => { S = blank(); }, { noFlip:true }); toast('已清空，可以開始匯入名單'); }); },
   clearSample(){ commit(() => { S = blank(); }, { noFlip:true }); toast('範例已清空，請匯入名單'); },
   editSel(){ const id = ui.sel; ui.sel = null; renderSel(); openPerson(id); },
@@ -1708,7 +1709,7 @@ $('#fileJson').addEventListener('change', async e => {
 });
 addEventListener('resize', () => { if ($('#dlgPrint').open) renderPreview(); });
 
-S = load() || sampleState();
+S = load() || blank();   // 第一次打開是空白的；想看範例可按「更多 → 載入範例資料」
 render({ noFlip:true });
 })();
 </script>
