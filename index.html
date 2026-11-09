@@ -265,6 +265,11 @@ dialog.wide{max-width:960px}
 .filepick{display:flex;align-items:center;justify-content:center;gap:8px;border:2.5px dashed var(--sky);border-radius:16px;min-height:56px;padding:8px 14px;font-weight:700;color:var(--sky);cursor:pointer;background:var(--sky-soft);text-align:center}
 .filepick input{position:absolute;opacity:0;width:1px;height:1px}
 .imp-preview{display:grid;gap:10px}
+.custom-box{border:2.5px dashed var(--sky);border-radius:16px;padding:12px 14px;display:grid;gap:10px;background:var(--sky-soft)}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.cgrid .field{min-width:0}
+.ctotal{font-family:var(--f-display);font-size:1.25rem;color:var(--sky)}
+.nocell{visibility:hidden}
 .fmt{border:2.5px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;gap:8px;background:var(--cream)}
 .fmt-scroll{overflow-x:auto}
 .fmt-table{border-collapse:collapse;width:100%;min-width:320px;background:#fff;font-size:.92rem}
@@ -612,6 +617,18 @@ code{background:var(--sun-soft);border-radius:6px;padding:0 5px;font-size:.95em}
       <label class="field">司機電話<input id="busPhone" class="inp" maxlength="20" inputmode="tel" placeholder="例如：0912-345-678"></label>
     </div>
     <label class="field">車型<select id="busLayout" class="inp"></select></label>
+    <div class="custom-box" id="customBox" hidden>
+      <p class="hint">照遊覽車公司給的座位圖填寫（車頭朝上看）。改數字下面就會算出總座位數。</p>
+      <div class="cgrid">
+        <label class="field">左邊幾排<input id="cLeft" class="inp" type="number" min="1" max="15" inputmode="numeric"></label>
+        <label class="field">右邊幾排<input id="cRight" class="inp" type="number" min="0" max="15" inputmode="numeric"></label>
+        <label class="field">右邊從左邊第幾排開始<input id="cStart" class="inp" type="number" min="1" max="6" inputmode="numeric"></label>
+        <label class="field">後門在右邊第幾排後面（沒有填 0）<input id="cDoor" class="inp" type="number" min="0" max="14" inputmode="numeric"></label>
+        <label class="field">最後一排幾個座位<input id="cBack" class="inp" type="number" min="0" max="6" inputmode="numeric"></label>
+        <label class="field">左邊前幾排「盡量不坐」<input id="cRes" class="inp" type="number" min="0" max="5" inputmode="numeric"></label>
+      </div>
+      <div class="ctotal" id="cTotal"></div>
+    </div>
   </div>
   <div class="m-foot">
     <button class="btn btn-danger left" id="busDel">刪除這台車</button>
@@ -702,33 +719,49 @@ code{background:var(--sun-soft);border-radius:6px;padding:0 5px;font-size:.95em}
 // 以 # 開頭的是「不是座位」的格子（佔右邊兩格）：#STEP 前門上下車區、#EXIT 後門、#SKIP 被上一排的大格子蓋住。
 // rl / rr：這一排在左邊、右邊各算第幾排（右邊從第 3 排的位置才開始有座位）。
 // reserve：盡量不安排人的座位（一鍵安排時最後才用）。
-function layout43(){
-  // 左邊 11 排。右邊：前門上下車區（佔左 1、左 2 的高度，畫成一格）→ 右 1～右 5 → 後門 → 右 6～右 8。
-  const rows = []; let rr = 0;
-  for (let r = 1; r <= 11; r++){
+// 通用車型產生器（43、36、自訂車型都用它）
+//  left：左邊幾排　rightStart：右邊第 1 排對齊左邊第幾排（前面是前門上下車區）
+//  right：右邊幾排座位　doorAfter：後門在右邊第幾排後面（0＝沒有後門）
+//  back：最後一排幾個座位（0＝沒有）　reserve：左邊前幾排「盡量不坐」
+function buildLayout(o){
+  const rows = []; const start = Math.max(1, o.rightStart);
+  const rightCells = [];                       // 右邊每個位置：座位排號或 'door'
+  for (let k = 1; k <= o.right; k++){ rightCells.push(k); if (o.doorAfter && k === o.doorAfter && k < o.right) rightCells.push('door'); }
+  const total = Math.max(o.left, start - 1 + rightCells.length);
+  for (let r = 1; r <= total; r++){
+    const leftPart = r <= o.left ? [`L${r}A`, `L${r}B`] : ['#NONE'];
     let right, rLabel = '', span = 0;
-    if (r === 1){ right = ['#STEP']; span = 2; }  // 前門上下車：一格跨兩排
-    else if (r === 2) right = ['#SKIP'];          // 被上面那一格蓋住
-    else if (r === 8) right = ['#EXIT'];          // 後門（右 5 和右 6 之間）
-    else { rr++; right = [`R${rr}C`, `R${rr}D`]; rLabel = rr; }
-    rows.push({ type:'std', rl:r, rr:rLabel, span, cells:[`L${r}A`, `L${r}B`, null, ...right] });
+    const idx = r - start;                     // 右邊第幾個位置（從 0 開始）
+    if (r < start){ if (r === 1){ right = ['#STEP']; span = start - 1; } else right = ['#SKIP']; }
+    else if (idx < rightCells.length){
+      const c = rightCells[idx];
+      if (c === 'door') right = ['#EXIT']; else { right = [`R${c}C`, `R${c}D`]; rLabel = c; }
+    } else right = ['#NONE'];
+    rows.push({ type:'std', rl: r <= o.left ? r : '', rr:rLabel, span, cells:[...leftPart, null, ...right] });
   }
-  rows.push({ type:'last', cells:[1,2,3,4,5].map(i => `B${i}`) });
-  return rows;   // 左 11×2=22 ＋ 右 8×2=16 ＋ 後排 5 ＝ 43
+  if (o.back > 0) rows.push({ type:'last', n:o.back, cells:Array.from({ length:o.back }, (_, i) => `B${i + 1}`) });
+  const reserve = []; for (let r = 1; r <= Math.min(o.reserve || 0, o.left); r++) reserve.push(`L${r}A`, `L${r}B`);
+  return { rows, reserve };
 }
-function layout45(){
-  const rows = [];
-  for (let r = 1; r <= 10; r++) rows.push({ type:'std', rl:r, rr:r, cells:[`L${r}A`, `L${r}B`, null, `R${r}C`, `R${r}D`] });
-  rows.push({ type:'last', cells:[1,2,3,4,5].map(i => `B${i}`) });
-  return rows;   // 10×4 ＋ 5 ＝ 45
-}
-const LAYOUTS = {
-  '43': { name:'43 人座大巴（左 11 排、右 8 排、右側後門）', rows: layout43(), reserve:['L1A','L1B','L2A','L2B'] },
-  '45': { name:'45 人座大巴（左右各 10 排，沒有後門）', rows: layout45(), reserve:[] },
+const seatCount = o => o.left * 2 + o.right * 2 + (o.back || 0);
+// 常用車型（要新增常用車型，在這裡加一行）
+const PRESETS = {
+  '43': { name:'43 人座大巴（左 11 排、右 8 排、右側後門、後排 5）', o:{ left:11, rightStart:3, right:8, doorAfter:5, back:5, reserve:2 } },
+  '36': { name:'36 人座（左 9 排、右 7 排、後排 4）',              o:{ left:9,  rightStart:3, right:7, doorAfter:0, back:4, reserve:2 } },
+  '45': { name:'45 人座大巴（左右各 10 排，沒有後門、後排 5）',    o:{ left:10, rightStart:1, right:10, doorAfter:0, back:5, reserve:0 } },
 };
+const LAYOUTS = {};
+for (const [k, v] of Object.entries(PRESETS)) LAYOUTS[k] = { name:v.name, o:v.o, ...buildLayout(v.o) };
+// 自訂車型：用參數組成一個代號，例如 c-11-3-8-5-5-2
+const customKey = o => `c-${o.left}-${o.rightStart}-${o.right}-${o.doorAfter}-${o.back}-${o.reserve}`;
+function ensureCustom(o){
+  const k = customKey(o);
+  if (!LAYOUTS[k]) LAYOUTS[k] = { name:`自訂 ${seatCount(o)} 人座（左 ${o.left} 排、右 ${o.right} 排${o.doorAfter ? '、後門' : ''}、後排 ${o.back}）`, o, custom:true, ...buildLayout(o) };
+  return k;
+}
 const DEFAULT_LAYOUT = '43';
 const isSeat = c => !!c && c[0] !== '#';
-const SPECIAL = { '#STEP':'前門上下車', '#EXIT':'後門 ⇲' };
+const SPECIAL = { '#STEP':'前門上下車', '#EXIT':'後門 ⇲', '#NONE':'' };
 const seatOrderCache = {};
 function seatOrder(key){ // 由前到後、由左到右的座位順序（座位編號就照這個）
   if (!seatOrderCache[key]) seatOrderCache[key] = (LAYOUTS[key] || LAYOUTS[DEFAULT_LAYOUT]).rows.flatMap(r => r.cells.filter(isSeat));
@@ -805,6 +838,7 @@ function normalize(){
   const ids = new Set(S.people.map(p => p.id));
   for (const b of S.buses){
     b.seats ||= {}; b.locked ||= {}; b.checked ||= {};
+    if (b.custom) b.layout = ensureCustom(b.custom);
     if (!LAYOUTS[b.layout]) b.layout = DEFAULT_LAYOUT;
     const okSeats = new Set(seatOrder(b.layout));
     for (const [sid, pid] of Object.entries(b.seats)){
@@ -943,12 +977,13 @@ function renderBus(){
     h('div', { class:'aisle' }),
     h('div', { class:'door' }, '車門 ⇲')));
   cabin.append(buildGrid(L, 'gridrows', (c, r) => {
-    if (c === null) return h('div', { class:'aisle', title:`左邊第 ${r.rl} 排${r.rr ? '／右邊第 ' + r.rr + ' 排' : ''}` },
-      h('span', { text:`左${r.rl}` }), r.rr ? h('span', { text:`右${r.rr}` }) : null);
+    if (c === null) return h('div', { class:'aisle', title:`${r.rl ? '左邊第 ' + r.rl + ' 排' : ''}${r.rr ? '／右邊第 ' + r.rr + ' 排' : ''}` },
+      r.rl ? h('span', { text:`左${r.rl}` }) : null, r.rr ? h('span', { text:`右${r.rr}` }) : null);
+    if (c === '#NONE') return h('div', { class:'nocell' });
     if (!isSeat(c)) return h('div', { class:c === '#EXIT' ? 'exit' : 'stepzone', text:SPECIAL[c] });
     return seatEl(b, c, ++n);
   }));
-  L.rows.filter(r => r.type === 'last').forEach(r => cabin.append(h('div', { class:'row row-last' }, r.cells.map(c => seatEl(b, c, ++n)))));
+  L.rows.filter(r => r.type === 'last').forEach(r => cabin.append(h('div', { class:'row row-last', style:`grid-template-columns:repeat(${r.cells.length},1fr)` }, r.cells.map(c => seatEl(b, c, ++n)))));
   const body = h('div', { class:'bus-body' },
     h('div', { class:'bus-nose' }, h('span', { class:'lamp' }), h('div', { class:'windshield' }, '▲ 車頭（前進方向）'), h('span', { class:'lamp' })),
     cabin,
@@ -1293,13 +1328,14 @@ function buildPage(b, o){
   };
   const stdN = L.rows.filter(r => r.type === 'std').length;
   const grid = buildGrid(L, 'pg-grid', (c, r) => {
-    if (c === null) return h('div', { class:'pg-aisle' }, h('span', { text:`左${r.rl}` }), r.rr ? h('span', { text:`右${r.rr}` }) : null);
+    if (c === null) return h('div', { class:'pg-aisle' }, r.rl ? h('span', { text:`左${r.rl}` }) : null, r.rr ? h('span', { text:`右${r.rr}` }) : null);
+    if (c === '#NONE') return h('div', {});
     if (!isSeat(c)) return h('div', { class:c === '#EXIT' ? 'pg-exit' : 'pg-step', text:SPECIAL[c] });
     return pgSeat(c);
   });
   grid.style.gridTemplateRows = `repeat(${stdN}, minmax(0, 1fr))`; grid.style.flex = String(stdN);
   box.append(grid);
-  L.rows.filter(r => r.type === 'last').forEach(r => box.append(h('div', { class:'pg-row last' }, r.cells.map(pgSeat))));
+  L.rows.filter(r => r.type === 'last').forEach(r => box.append(h('div', { class:'pg-row last', style:`grid-template-columns:repeat(${r.cells.length},1fr)` }, r.cells.map(pgSeat))));
   pg.append(box);
   pg.append(h('div', { class:'pg-dir', text:'▼ 車尾（後）▼' }));
   const cnt = g => ps.filter(p => (p.g || 'U') === g && seatOf(b, p.id)).length;
@@ -1445,11 +1481,24 @@ function openAuto(){
   $('#dlgAuto').showModal();
 }
 let editBusId = null;
+// 自訂車型：讀取／填入／即時計算總座位數
+const CF = { left:'#cLeft', right:'#cRight', rightStart:'#cStart', doorAfter:'#cDoor', back:'#cBack', reserve:'#cRes' };
+function fillCustom(o){ for (const [k, id] of Object.entries(CF)) $(id).value = o[k] ?? 0; updateCustomTotal(); }
+function readCustom(){
+  const o = {}; const lim = { left:[1,15], right:[0,15], rightStart:[1,6], doorAfter:[0,14], back:[0,6], reserve:[0,5] };
+  for (const [k, id] of Object.entries(CF)){ const [a, z] = lim[k]; o[k] = Math.min(z, Math.max(a, parseInt($(id).value, 10) || 0)); }
+  if (o.doorAfter >= o.right) o.doorAfter = 0;
+  return o;
+}
+function updateCustomTotal(){ const o = readCustom(); $('#cTotal').textContent = `共 ${seatCount(o)} 個座位（左 ${o.left * 2}＋右 ${o.right * 2}＋後排 ${o.back}）`; }
 function openBus(){
   const b = bus(); editBusId = b.id;
   $('#busTitle').value = b.title; $('#busCls').value = b.cls; $('#busTeacher').value = b.teacher; $('#busPlate').value = b.plate;
   $('#busDriver').value = b.driver; $('#busPhone').value = b.phone;
-  $('#busLayout').replaceChildren(...Object.entries(LAYOUTS).map(([k, v]) => h('option', { value:k, text:v.name }))); $('#busLayout').value = b.layout;
+  $('#busLayout').replaceChildren(...Object.entries(PRESETS).map(([k, v]) => h('option', { value:k, text:v.name })), h('option', { value:'custom', text:'自訂車型（自己填排數）…' }));
+  $('#busLayout').value = b.custom ? 'custom' : b.layout;
+  fillCustom(b.custom || (LAYOUTS[b.layout] || LAYOUTS[DEFAULT_LAYOUT]).o);
+  $('#customBox').hidden = !b.custom;
   $('#busDel').hidden = S.buses.length < 2;
   $('#dlgBus').showModal();
 }
@@ -1508,7 +1557,7 @@ const actions = {
   },
   clearRoll(){ commit(() => { bus().checked = {}; }, { noFlip:true }); },
   undo, redo,
-  addBus(){ commit(() => { const b = newBus(S.buses.length + 1); S.buses.push(b); S.cur = b.id; S.sample = false; }, { noFlip:true }); toast(`已新增 ${bus().title}`); },
+  addBus(){ commit(() => { const b = newBus(S.buses.length + 1); S.buses.push(b); S.cur = b.id; S.sample = false; }, { noFlip:true }); toast(`已新增 ${bus().title}，請選擇車型`); openBus(); },
   exportXlsx, saveJson, templateXlsx,
   openJson(){ $('#fileJson').click(); },
   sample(){ ask('載入範例資料', '目前的資料會被範例取代（可以按「復原」找回）。要繼續嗎？', '載入範例', () => commit(() => { S = sampleState(); }, { noFlip:true })); },
@@ -1583,13 +1632,20 @@ $('#busSave').addEventListener('click', () => {
   let moved = 0;
   commit(() => {
     Object.assign(b, { title:v('#busTitle'), cls:v('#busCls'), teacher:v('#busTeacher'), plate:v('#busPlate'), driver:v('#busDriver'), phone:v('#busPhone') });
-    const nl = $('#busLayout').value;
+    let nl = $('#busLayout').value;
+    if (nl === 'custom'){ b.custom = readCustom(); nl = ensureCustom(b.custom); } else b.custom = null;
     if (nl !== b.layout){ const ok = new Set(seatOrder(nl)); for (const s of Object.keys(b.seats)) if (!ok.has(s)){ delete b.seats[s]; delete b.locked[s]; moved++; } b.layout = nl; }
     S.sample = false;
   }, { noFlip:true });
   $('#dlgBus').close();
   toast(moved ? `已儲存，換車型後有 ${moved} 人移回未安排` : '車輛資料已儲存');
 });
+$('#busLayout').addEventListener('change', () => {
+  const v = $('#busLayout').value, box = $('#customBox');
+  if (v === 'custom'){ box.hidden = false; updateCustomTotal(); }
+  else { box.hidden = true; fillCustom(PRESETS[v].o); }   // 選了常用車型，自訂欄位也帶入它的數字，方便微調
+});
+Object.values(CF).forEach(id => $(id).addEventListener('input', updateCustomTotal));
 $('#busDel').addEventListener('click', () => {
   const b = S.buses.find(x => x.id === editBusId); if (!b) return;
   const n = peopleOf(b).length; $('#dlgBus').close();
